@@ -30,7 +30,11 @@ class VertexObject;
 namespace celestia::render
 {
 
-class PsfPointLargeRenderer;
+class PsfPointLargeRenderer {
+public:
+    PsfPointLargeRenderer(const Renderer& renderer, unsigned int capacity) {}
+    ~PsfPointLargeRenderer() = default;
+};
 
 // Vertex buffer used by StarStyle::PointSpreadFunction.
 // Vertices carry per-star peak radiance (HDR float) and a linear, green-
