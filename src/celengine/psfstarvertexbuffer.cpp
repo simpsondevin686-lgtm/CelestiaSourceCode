@@ -8,6 +8,7 @@
 // of the License, or (at your option) any later version.
 
 #include "psfstarvertexbuffer.h"
+#include "celrender/psfpointlargerenderer.h"
 
 #include <cassert>
 #include <cmath>
