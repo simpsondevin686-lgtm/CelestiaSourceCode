@@ -83,7 +83,9 @@ PsfStarVertexBuffer::start(Mode mode)
     if (m_useLargePoints)
     {
         if (m_largePointRenderer == nullptr)
-            m_largePointRenderer = std::make_unique<PsfPointLargeRenderer>(m_renderer, m_capacity);
+            #if !defined(GLES) && !defined(ANDROID) && !defined(__ANDROID__)
+    m_largePointRenderer = std::make_unique<PsfPointLargeRenderer>(m_renderer, m_capacity);
+#endif
         m_largePointRenderer->setPointRadius(m_pointRadius);
         m_largePointRenderer->setPointScale(m_pointScale);
         m_largePointRenderer->start();
