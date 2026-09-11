@@ -42,3 +42,5 @@ set(CELRENDER_SOURCES
 )
 
 add_library(celrender OBJECT ${CELRENDER_SOURCES})
+
+set_target_properties(celrender PROPERTIES CXX_VISIBILITY_PRESET default VISIBILITY_INLINES_HIDDEN OFF)
