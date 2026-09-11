@@ -28,3 +28,13 @@ PsfPointLargeRenderer::onMakeCurrent(const Eigen::Vector2f &viewportRcp)
 }
 
 } // namespace celestia::render
+
+
+// Fallback definition for GLES/Mobile targets to satisfy linker vtables & symbols
+#if defined(GLES) || defined(MOBILE) || defined(ANDROID) || defined(__ANDROID__)
+namespace celestia::render
+{
+    // Ensure default destructor/constructor symbol generation
+    PsfPointLargeRenderer::~PsfPointLargeRenderer() = default;
+}
+#endif
