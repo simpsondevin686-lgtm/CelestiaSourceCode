@@ -38,6 +38,7 @@ public:
         Spectral_WC    = 10,
         Spectral_WN    = 11,
         Spectral_WO    = 12,
+        Spectral_PURP = 14,
         Spectral_Unknown = 13,
         Spectral_L     = 14,
         Spectral_T     = 15,
@@ -103,6 +104,7 @@ public:
 
 private:
     StarType starType{ NormalStar };
+        Spectral_PURP = 14,
     SpectralClass specClass{ Spectral_Unknown };
     LuminosityClass lumClass{ Lum_Unknown };
     unsigned int subclass{ Subclass_Unknown };
