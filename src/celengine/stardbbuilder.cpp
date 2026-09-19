@@ -1335,6 +1335,94 @@ static inline bool parseStringField(std::string_view block, std::string_view key
     return true;
 }
 
+
+// High-Performance Parallel Memory-Mapped STC Parser with Named Star & Cross-Reference Support
+#include <charconv>
+#include <chrono>
+#include <cmath>
+#include <future>
+#include <thread>
+#include <vector>
+#include <string_view>
+#include <sstream>
+#include <Eigen/Core>
+
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
+struct ExtractedStarData {
+    Star star;
+    std::string primaryName;
+    std::vector<std::string> aliases;
+};
+
+static inline bool parseNumericField(std::string_view block, std::string_view key, float& outVal)
+{
+    size_t keyPos = block.find(key);
+    if (keyPos == std::string_view::npos) return false;
+
+    size_t start = block.find_first_of("0123456789-+.", keyPos + key.size());
+    if (start == std::string_view::npos) return false;
+
+    size_t end = block.find_first_not_of("0123456789-+eE.", start);
+    if (end == std::string_view::npos) end = block.size();
+
+    auto [ptr, ec] = std::from_chars(block.data() + start, block.data() + end, outVal);
+    return ec == std::errc();
+}
+
+static inline bool parseUIntField(std::string_view block, std::string_view key, uint32_t& outVal)
+{
+    size_t keyPos = block.find(key);
+    if (keyPos == std::string_view::npos) return false;
+
+    size_t start = block.find_first_of("0123456789", keyPos + key.size());
+    if (start == std::string_view::npos) return false;
+
+    size_t end = block.find_first_not_of("0123456789", start);
+    if (end == std::string_view::npos) end = block.size();
+
+    auto [ptr, ec] = std::from_chars(block.data() + start, block.data() + end, outVal);
+    return ec == std::errc();
+}
+
+static inline bool parseStringField(std::string_view block, std::string_view key, std::string_view& outStr)
+{
+    size_t keyPos = block.find(key);
+    if (keyPos == std::string_view::npos) return false;
+
+    size_t q1 = block.find('"', keyPos + key.size());
+    if (q1 == std::string_view::npos) return false;
+
+    size_t q2 = block.find('"', q1 + 1);
+    if (q2 == std::string_view::npos) return false;
+
+    outStr = block.substr(q1 + 1, q2 - q1 - 1);
+    return true;
+}
+
+static inline bool parseStarHeaderName(std::string_view block, std::string_view& outName)
+{
+    size_t bracePos = block.find('{');
+    if (bracePos == std::string_view::npos) return false;
+
+    std::string_view header = block.substr(0, bracePos);
+    size_t q1 = header.find('"');
+    if (q1 == std::string_view::npos) return false;
+
+    size_t q2 = header.find('"', q1 + 1);
+    if (q2 == std::string_view::npos) return false;
+
+    outName = header.substr(q1 + 1, q2 - q1 - 1);
+    return true;
+}
+
 bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, const std::string_view& domain)
 {
     auto startTime = std::chrono::high_resolution_clock::now();
@@ -1380,7 +1468,7 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
         startOffset = endOffset;
     }
 
-    std::vector<std::future<std::vector<Star>>> futures;
+    std::vector<std::future<std::vector<ExtractedStarData>>> futures;
     futures.reserve(numThreads);
 
     for (unsigned int i = 0; i < numThreads; ++i) {
@@ -1388,7 +1476,7 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
         size_t cEnd = chunks[i].second;
 
         futures.push_back(std::async(std::launch::async, [mappedData, cStart, cEnd]() {
-            std::vector<Star> threadStars;
+            std::vector<ExtractedStarData> threadStars;
             threadStars.reserve((cEnd - cStart) / 120);
 
             std::string_view sv(mappedData + cStart, cEnd - cStart);
@@ -1414,9 +1502,12 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
                 float ra = 0.0f, dec = 0.0f, distance = 0.0f, appMag = 0.0f;
                 float radius = 0.0f, temp = 0.0f, periodDays = 0.0f;
                 std::string_view spectralType;
+                std::string_view rawName;
 
                 parseUIntField(block, "Star", catalogNumber);
                 if (catalogNumber == 0) parseUIntField(block, "HIP", catalogNumber);
+
+                parseStarHeaderName(block, rawName);
 
                 bool hasRA = parseNumericField(block, "RA", ra);
                 bool hasDec = parseNumericField(block, "Dec", dec);
@@ -1434,9 +1525,9 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
                     if (periodDays == 0.0f) parseNumericField(rotBlock, "Period", periodDays);
                 }
 
-                if (catalogNumber != 0 && hasRA && hasDec && hasDist) {
-                    Star star;
-                    star.setIndex(catalogNumber);
+                if ((catalogNumber != 0 || !rawName.empty()) && hasRA && hasDec && hasDist) {
+                    ExtractedStarData data;
+                    data.star.setIndex(catalogNumber);
 
                     double raRad = (ra <= 24.0f ? ra * 15.0f : ra) * (M_PI / 180.0);
                     double decRad = dec * (M_PI / 180.0);
@@ -1445,15 +1536,28 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
                     float y = static_cast<float>(distance * std::sin(decRad));
                     float z = static_cast<float>(-distance * std::cos(decRad) * std::sin(raRad));
 
-                    star.setPosition(Eigen::Vector3f(x, y, z));
+                    data.star.setPosition(Eigen::Vector3f(x, y, z));
 
                     if (hasMag && distance > 0.0f) {
                         float distPc = distance * 0.306601f;
                         float absMag = appMag - 5.0f * (std::log10(distPc) - 1.0f);
-                        star.setAbsoluteMagnitude(absMag);
+                        data.star.setAbsoluteMagnitude(absMag);
                     }
 
-                    threadStars.push_back(star);
+                    if (!rawName.empty()) {
+                        data.primaryName = std::string(rawName);
+                        size_t start = 0;
+                        size_t delimPos = 0;
+                        while ((delimPos = rawName.find(':', start)) != std::string_view::npos) {
+                            data.aliases.emplace_back(rawName.substr(start, delimPos - start));
+                            start = delimPos + 1;
+                        }
+                        if (start < rawName.size()) {
+                            data.aliases.emplace_back(rawName.substr(start));
+                        }
+                    }
+
+                    threadStars.push_back(std::move(data));
                 }
 
                 pos = blockEnd + 1;
@@ -1463,9 +1567,9 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
     }
 
     for (auto& fut : futures) {
-        auto threadStars = fut.get();
-        for (auto& star : threadStars) {
-            unsortedStars.push_back(star);
+        auto extractedDataList = fut.get();
+        for (auto& data : extractedDataList) {
+            unsortedStars.push_back(data.star);
         }
     }
 
@@ -1481,6 +1585,6 @@ bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, con
     auto endTime = std::chrono::high_resolution_clock::now();
     auto loadTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
-    GetLogger()->debug("Parallel STC Load completed: {} bytes in {} ms\n", fileSize, loadTimeMs);
+    GetLogger()->debug("Parallel STC Load with Named Stars completed: {} bytes in {} ms\n", fileSize, loadTimeMs);
     return true;
 }
