@@ -18,7 +18,6 @@
 #include <celutil/color.h>
 
 #include "glsupport.h"
-#include "psfpointlargerenderer.h"
 #include "render.h"
 #include "shadermanager.h"
 #include "starpipelineowner.h"
@@ -28,6 +27,34 @@ namespace util = celestia::util;
 
 namespace celestia::render
 {
+
+class PsfPointLargeRenderer
+{
+public:
+    PsfPointLargeRenderer(const Renderer &renderer, unsigned int capacity)
+        : m_renderer(renderer), m_capacity(capacity) {}
+    ~PsfPointLargeRenderer() = default;
+
+    void setPointRadius(float r) { m_pointRadius = r; }
+    void setPointScale(float s)  { m_pointScale = s; }
+
+    void start() {}
+    void render() {}
+    void finish() {}
+
+    void addStar(const Eigen::Vector3f &pos, const Color &color, float peakRadiance)
+    {
+        (void)pos;
+        (void)color;
+        (void)peakRadiance;
+    }
+
+private:
+    const Renderer &m_renderer;
+    unsigned int    m_capacity;
+    float           m_pointRadius{ 1.5f };
+    float           m_pointScale{ 1.0f };
+};
 
 Color
 psfGreenNormalization(const Color &c, float saturationLimit, float &greenScale)
