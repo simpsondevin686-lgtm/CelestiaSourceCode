@@ -1156,3 +1156,180 @@ StarDatabaseBuilder::buildIndexes()
                   return octreeRoot[idx0].getIndex() < octreeRoot[idx1].getIndex();
               });
 }
+
+// High-Performance Parallel Memory-Mapped STC Parser
+#include <charconv>
+#include <cmath>
+#include <future>
+#include <thread>
+#include <vector>
+#include <string_view>
+#include <Eigen/Core>
+
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
+// Helper to isolate exact numeric token pointer boundaries [numStart, numEnd)
+static inline bool parseNumericField(std::string_view block, std::string_view key, float& outVal)
+{
+    size_t keyPos = block.find(key);
+    if (keyPos == std::string_view::npos) return false;
+
+    size_t start = block.find_first_of("0123456789-+.", keyPos + key.size());
+    if (start == std::string_view::npos) return false;
+
+    size_t end = block.find_first_not_of("0123456789-+eE.", start);
+    if (end == std::string_view::npos) end = block.size();
+
+    auto [ptr, ec] = std::from_chars(block.data() + start, block.data() + end, outVal);
+    return ec == std::errc();
+}
+
+static inline bool parseUIntField(std::string_view block, std::string_view key, uint32_t& outVal)
+{
+    size_t keyPos = block.find(key);
+    if (keyPos == std::string_view::npos) return false;
+
+    size_t start = block.find_first_of("0123456789", keyPos + key.size());
+    if (start == std::string_view::npos) return false;
+
+    size_t end = block.find_first_not_of("0123456789", start);
+    if (end == std::string_view::npos) end = block.size();
+
+    auto [ptr, ec] = std::from_chars(block.data() + start, block.data() + end, outVal);
+    return ec == std::errc();
+}
+
+bool StarDatabaseBuilder::loadSTCParallel(const std::filesystem::path& path, const std::string_view& domain)
+{
+    util::Timer timer;
+    timer.start();
+
+#if defined(_WIN32)
+    HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return false;
+    DWORD fileSizeHigh = 0;
+    DWORD fileSizeLow = GetFileSize(hFile, &fileSizeHigh);
+    size_t fileSize = (static_cast<size_t>(fileSizeHigh) << 32) | fileSizeLow;
+    if (fileSize == 0) { CloseHandle(hFile); return false; }
+    HANDLE hMapping = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (!hMapping) { CloseHandle(hFile); return false; }
+    const char* mappedData = static_cast<const char*>(MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0));
+    if (!mappedData) { CloseHandle(hMapping); CloseHandle(hFile); return false; }
+#else
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd == -1) return false;
+    struct stat sb;
+    if (fstat(fd, &sb) == -1 || sb.st_size == 0) { close(fd); return false; }
+    size_t fileSize = static_cast<size_t>(sb.st_size);
+    const char* mappedData = static_cast<const char*>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+    if (mappedData == MAP_FAILED) { close(fd); return false; }
+#endif
+
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 4;
+
+    size_t chunkSize = fileSize / numThreads;
+    std::vector<std::pair<size_t, size_t>> chunks(numThreads);
+
+    size_t startOffset = 0;
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        size_t endOffset = (i == numThreads - 1) ? fileSize : startOffset + chunkSize;
+        while (endOffset < fileSize) {
+            if (mappedData[endOffset] == '}' || mappedData[endOffset] == '\n') {
+                endOffset++;
+                break;
+            }
+            endOffset++;
+        }
+        chunks[i] = { startOffset, endOffset };
+        startOffset = endOffset;
+    }
+
+    std::vector<std::future<std::vector<Star>>> futures;
+    futures.reserve(numThreads);
+
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        size_t cStart = chunks[i].first;
+        size_t cEnd = chunks[i].second;
+
+        futures.push_back(std::async(std::launch::async, [mappedData, cStart, cEnd]() {
+            std::vector<Star> threadStars;
+            threadStars.reserve((cEnd - cStart) / 80);
+
+            std::string_view sv(mappedData + cStart, cEnd - cStart);
+            size_t pos = 0;
+            while (pos < sv.size()) {
+                size_t blockEnd = sv.find('}', pos);
+                if (blockEnd == std::string_view::npos) break;
+
+                std::string_view block = sv.substr(pos, blockEnd - pos + 1);
+                
+                uint32_t catalogNumber = 0;
+                float ra = 0.0f, dec = 0.0f, distance = 0.0f, appMag = 0.0f;
+                
+                parseUIntField(block, "Star", catalogNumber);
+                if (catalogNumber == 0) parseUIntField(block, "HIP", catalogNumber);
+
+                bool hasRA = parseNumericField(block, "RA", ra);
+                bool hasDec = parseNumericField(block, "Dec", dec);
+                bool hasDist = parseNumericField(block, "Distance", distance);
+                bool hasMag = parseNumericField(block, "AppMag", appMag);
+
+                if (catalogNumber != 0 && hasRA && hasDec && hasDist) {
+                    Star star;
+                    star.setIndex(catalogNumber);
+
+                    // Convert RA (hours or degrees) and Dec (degrees) to radians
+                    double raRad = (ra <= 24.0f ? ra * 15.0f : ra) * (M_PI / 180.0);
+                    double decRad = dec * (M_PI / 180.0);
+
+                    // Compute 3D Cartesian coordinates in Light-Years
+                    float x = static_cast<float>(distance * std::cos(decRad) * std::cos(raRad));
+                    float y = static_cast<float>(distance * std::sin(decRad));
+                    float z = static_cast<float>(-distance * std::cos(decRad) * std::sin(raRad));
+
+                    star.setPosition(Eigen::Vector3f(x, y, z));
+
+                    // Apparent to Absolute Magnitude conversion: M = m - 5 * log10(d_pc / 10)
+                    if (hasMag && distance > 0.0f) {
+                        float distPc = distance * 0.306601f;
+                        float absMag = appMag - 5.0f * (std::log10(distPc) - 1.0f);
+                        star.setAbsoluteMagnitude(absMag);
+                    }
+
+                    threadStars.push_back(star);
+                }
+
+                pos = blockEnd + 1;
+            }
+            return threadStars;
+        }));
+    }
+
+    for (auto& fut : futures) {
+        auto threadStars = fut.get();
+        for (auto& star : threadStars) {
+            unsortedStars.push_back(star);
+        }
+    }
+
+#if defined(_WIN32)
+    UnmapViewOfFile(mappedData);
+    CloseHandle(hMapping);
+    CloseHandle(hFile);
+#else
+    munmap(const_cast<char*>(mappedData), fileSize);
+    close(fd);
+#endif
+
+    auto loadTime = timer.getTime();
+    GetLogger()->debug("Parallel STC Load completed: {} bytes in {} ms\n", fileSize, loadTime);
+    return true;
+}
