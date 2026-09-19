@@ -63,6 +63,7 @@ public:
 
     void setNameDatabase(std::unique_ptr<StarNameDatabase>&&);
 
+    bool loadSTCParallel(const std::filesystem::path& path, const std::string_view& domain);
     std::unique_ptr<StarDatabase> finish();
 
     struct StcHeader;
