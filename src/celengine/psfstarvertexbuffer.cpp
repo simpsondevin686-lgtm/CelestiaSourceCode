@@ -13,17 +13,17 @@
 #include <cmath>
 
 #include <celrender/gl/vertexobject.h>
-#include <celrender/psfpointlargerenderer.h>
 #include <celastro/astro.h>
 #include <celcompat/numbers.h>
 #include <celutil/color.h>
 
 #include "glsupport.h"
+#include "psfpointlargerenderer.h"
 #include "render.h"
 #include "shadermanager.h"
 #include "starpipelineowner.h"
 
-namespace gl  = celestia::gl;
+namespace gl   = celestia::gl;
 namespace util = celestia::util;
 
 namespace celestia::render
@@ -79,10 +79,12 @@ PsfStarVertexBuffer::start(Mode mode)
     m_mode = mode;
     m_useLargePoints = mode == Mode::Point
                       && 2.0f * m_pointRadius * m_pointScale > static_cast<float>(gl::maxPointSize);
+
     if (m_useLargePoints)
     {
         if (m_largePointRenderer == nullptr)
             m_largePointRenderer = std::make_unique<PsfPointLargeRenderer>(m_renderer, m_capacity);
+
         m_largePointRenderer->setPointRadius(m_pointRadius);
         m_largePointRenderer->setPointScale(m_pointScale);
         m_largePointRenderer->start();
@@ -90,7 +92,7 @@ PsfStarVertexBuffer::start(Mode mode)
     }
 
     StaticShader id = (mode == Mode::Point) ? StaticShader::PsfStarPoint
-                                            : StaticShader::PsfStarGlow;
+                                           : StaticShader::PsfStarGlow;
     m_prog = m_renderer.getShaderManager().getShader(id);
 }
 
@@ -127,11 +129,9 @@ PsfStarVertexBuffer::makeCurrent()
     auto &owner = m_renderer.starPipelineOwner();
     if (m_prog == nullptr)
         return;
-
     owner.setActive(this);  // flushes whoever held the pipeline before
 
     setupVertexArrayObject();
-
     m_prog->use();
     m_prog->setMVPMatrices(m_renderer.getCurrentProjectionMatrix(),
                            m_renderer.getCurrentModelViewMatrix());
@@ -142,6 +142,7 @@ PsfStarVertexBuffer::makeCurrent()
         float a = (m_pointRadius > 0.0f) ? (m_optimization / m_pointRadius) : 0.0f;
         float denom = (celestia::numbers::pi_v<float> / std::max(m_pointRadius, 1e-6f)) - a;
         float b = (denom != 0.0f) ? (1.0f / denom) : 0.0f;
+
         m_prog->floatParam("psfA") = a;
         m_prog->floatParam("psfB") = b;
         m_prog->floatParam("psfMinVisRad") = celestia::gl::sRGBRendering
@@ -251,4 +252,5 @@ PsfStarVertexBuffer::addStar(const Eigen::Vector3f &pos,
         m_nStars = 0;
     }
 }
+
 } // namespace celestia::render
