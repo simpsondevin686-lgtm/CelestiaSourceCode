@@ -36,10 +36,7 @@ const Eigen::Vector2d SRGB_R_xy(0.64, 0.33);
 const Eigen::Vector2d SRGB_G_xy(0.30, 0.60);
 const Eigen::Vector2d SRGB_B_xy(0.15, 0.06);
 
-
-// Approximate colors used by older versions of Celestia, extended beyond 40,000K
-// with a custom ultra-bright exotic spectrum transitioning through purple, violet, green,
-// bright brown, vivid primaries, and ending in pitch black.
+// Extended high-luminosity spectrum lookup table
 constexpr std::array StarColors_Enhanced{
     Color(0.00f, 0.00f, 0.00f), // T = 0K
     Color(0.75f, 0.20f, 0.20f), // T = 1000K
@@ -82,7 +79,6 @@ constexpr std::array StarColors_Enhanced{
     Color(0.60f, 0.70f, 1.00f), // T = 38000K
     Color(0.60f, 0.70f, 1.00f), // T = 39000K
     Color(0.60f, 0.70f, 1.00f), // T = 40000K
-    // Extended high-luminosity spectrum colors beyond 40000K:
     Color(0.70f, 0.30f, 1.00f), // T = 41000K (Deep Purple)
     Color(0.80f, 0.20f, 1.00f), // T = 42000K (Vivid Purple)
     Color(0.90f, 0.10f, 1.00f), // T = 43000K (Electric Violet)
@@ -186,7 +182,6 @@ struct CIEPoint
     float z;
 };
 
-// CIE 1931 2-degree color matching functions (380nm to 780nm in 5nm steps)
 constexpr CIEPoint CIEFunctions[] = {
     { 380.0f, 0.0014f, 0.0000f, 0.0065f },
     { 385.0f, 0.0022f, 0.0001f, 0.0105f },
@@ -273,10 +268,10 @@ constexpr CIEPoint CIEFunctions[] = {
 
 double planck(double lambda, double temp)
 {
-    constexpr double h = 6.62607015e-34;  // Planck constant (J*s)
-    constexpr double c = 2.99792458e8;     // Speed of light (m/s)
-    constexpr double k = 1.380649e-23;     // Boltzmann constant (J/K)
-    constexpr double hc_k = (h * c) / k * 1e9; // nm*K
+    constexpr double h = 6.62607015e-34;
+    constexpr double c = 2.99792458e8;
+    constexpr double k = 1.380649e-23;
+    constexpr double hc_k = (h * c) / k * 1e9;
 
     return std::pow(lambda / 1000.0, -5.0) / std::expm1(hc_k / (lambda * temp));
 }
@@ -311,9 +306,21 @@ void createBlackbodyTable(const Eigen::Vector3d& whitepoint,
     for (std::size_t i = 1; i < BlackbodyTableEntries; ++i)
     {
         float temp = static_cast<float>(i) * TemperatureStep;
-        Eigen::Vector3d xyz = temperatureToXYZ(temp);
-        Eigen::Vector3f rgb = converter.convert(xyz);
-        table[i] = Color(rgb);
+        if (temp > 40000.0f)
+        {
+            // Override with custom extended spectrum for temperatures above 40000K across all modes
+            std::size_t idx = static_cast<std::size_t>(std::round(temp / 1000.0f));
+            if (idx < StarColors_Enhanced.size())
+                table[i] = StarColors_Enhanced[idx];
+            else
+                table[i] = StarColors_Enhanced.back();
+        }
+        else
+        {
+            Eigen::Vector3d xyz = temperatureToXYZ(temp);
+            Eigen::Vector3f rgb = converter.convert(xyz);
+            table[i] = Color(rgb);
+        }
     }
 }
 
