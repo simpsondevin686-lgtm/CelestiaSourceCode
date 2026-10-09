@@ -24,7 +24,7 @@ namespace
 
 constexpr std::size_t BlackbodyTableEntries = 801;
 constexpr float MaxTemperature = 80000.0f;
-constexpr float TemperatureStep = MaxTemperature / static_cast<float>(BlackbodyTableEntries - 1);
+constexpr float TemperatureStep = MaxTemperature / static_cast<float>(BlackbodyTableEntries - 1); // 100K step
 
 // Temperature of the color table bucket containing the Sun
 const float SolarTemperatureBucket = std::nearbyint(5772.0f / TemperatureStep) * TemperatureStep;
@@ -36,8 +36,8 @@ const Eigen::Vector2d SRGB_R_xy(0.64, 0.33);
 const Eigen::Vector2d SRGB_G_xy(0.30, 0.60);
 const Eigen::Vector2d SRGB_B_xy(0.15, 0.06);
 
-// Extended high-luminosity spectrum lookup table
-constexpr std::array StarColors_Enhanced{
+// Extended high-luminosity spectrum anchor colors (0K to 80000K)
+constexpr std::array StarColors_Anchors{
     Color(0.00f, 0.00f, 0.00f), // T = 0K
     Color(0.75f, 0.20f, 0.20f), // T = 1000K
     Color(1.00f, 0.40f, 0.40f), // T = 2000K
@@ -120,6 +120,14 @@ constexpr std::array StarColors_Enhanced{
     Color(1.00f, 1.00f, 1.00f), // T = 79000K (Maximum Luminance Pure White right next to black)
     Color(0.00f, 0.00f, 0.00f), // T = 80000K (Pitch Black)
 };
+
+Color getAnchorColor(float temp)
+{
+    std::size_t idx = static_cast<std::size_t>(std::round(temp / 1000.0f));
+    if (idx >= StarColors_Anchors.size())
+        return StarColors_Anchors.back();
+    return StarColors_Anchors[idx];
+}
 
 class XYZRGBConverter
 {
@@ -308,12 +316,7 @@ void createBlackbodyTable(const Eigen::Vector3d& whitepoint,
         float temp = static_cast<float>(i) * TemperatureStep;
         if (temp > 40000.0f)
         {
-            // Override with custom extended spectrum for temperatures above 40000K across all modes
-            std::size_t idx = static_cast<std::size_t>(std::round(temp / 1000.0f));
-            if (idx < StarColors_Enhanced.size())
-                table[i] = StarColors_Enhanced[idx];
-            else
-                table[i] = StarColors_Enhanced.back();
+            table[i] = getAnchorColor(temp);
         }
         else
         {
@@ -321,6 +324,19 @@ void createBlackbodyTable(const Eigen::Vector3d& whitepoint,
             Eigen::Vector3f rgb = converter.convert(xyz);
             table[i] = Color(rgb);
         }
+    }
+}
+
+void createEnhancedTable(float& scale, std::vector<Color>& table)
+{
+    scale = 1.0f / TemperatureStep;
+    table.resize(BlackbodyTableEntries);
+
+    table[0] = Color(0.0f, 0.0f, 0.0f);
+    for (std::size_t i = 1; i < BlackbodyTableEntries; ++i)
+    {
+        float temp = static_cast<float>(i) * TemperatureStep;
+        table[i] = getAnchorColor(temp);
     }
 }
 
@@ -340,9 +356,7 @@ bool ColorTemperatureTable::setType(ColorTableType _type)
     switch (tableType)
     {
     case ColorTableType::Enhanced:
-        colors.reserve(StarColors_Enhanced.size());
-        std::copy(StarColors_Enhanced.cbegin(), StarColors_Enhanced.cend(), std::back_inserter(colors));
-        tempScale = 1.0f / 1000.0f;
+        createEnhancedTable(tempScale, colors);
         break;
 
     case ColorTableType::Blackbody_D65:
