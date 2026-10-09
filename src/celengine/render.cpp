@@ -3517,7 +3517,8 @@ void Renderer::renderStar(const Star& star,
         surface.appearanceFlags |= Surface::Flags::ApplyBaseTexture;
         surface.appearanceFlags |= Surface::Flags::Emissive;
         // Modulate surface texture RGB directly by the star lookup color
-        surface.emissive = color.toVector3();
+        // Modulate surface color directly
+        surface.color = color;
 
         rp.isStar = true;
         rp.surface = &surface;
