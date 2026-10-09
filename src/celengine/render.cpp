@@ -3506,14 +3506,18 @@ void Renderer::renderStar(const Star& star,
         Surface surface;
         RenderProperties rp;
 
+        // Ensure the star surface texture color continuously matches the atmospheric/blackbody glow color
         surface.color = color;
 
         if (auto mtex = star.getTexture(); mtex != util::TextureHandle::Invalid)
             surface.baseTexture = mtex;
         else
             surface.baseTexture = util::TextureHandle::Invalid;
+
         surface.appearanceFlags |= Surface::Flags::ApplyBaseTexture;
         surface.appearanceFlags |= Surface::Flags::Emissive;
+        // Modulate surface texture RGB directly by the star lookup color
+        surface.emissive = color.toVector3();
 
         rp.isStar = true;
         rp.surface = &surface;
