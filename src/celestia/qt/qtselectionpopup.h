@@ -60,6 +60,7 @@ public slots:
     void slotToggleTerminator();
     void slotGotoStartDate();
     void slotGotoEndDate();
+    void slotStarSizeSelection();
     void slotInfo();
     void slotToggleVisibility(bool);
 
