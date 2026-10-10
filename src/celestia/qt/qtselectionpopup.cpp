@@ -177,6 +177,13 @@ SelectionPopup::SelectionPopup(const Selection& sel,
         addAction(syncOrbitAction);
     }
 
+    if (sel.body() != nullptr && sel.body()->getStar() != nullptr)
+    {
+        QAction* starSizeAction = new QAction(_("StarSize"), this);
+        connect(starSizeAction, SIGNAL(triggered()), this, SLOT(slotStarSizeSelection()));
+        addAction(starSizeAction);
+    }
+
     QAction* infoAction = new QAction(_("Info"), this);
     connect(infoAction, SIGNAL(triggered()), this, SLOT(slotInfo()));
     addAction(infoAction);
@@ -667,3 +674,30 @@ SelectionPopup::slotToggleVisibility(bool visible)
 }
 
 } // end namespace celestia::qt
+
+void SelectionPopup::slotStarSizeSelection()
+{
+    if (selection.body() == nullptr)
+        return;
+
+    Body* body = selection.body();
+    Star* star = body->getStar();
+    if (star == nullptr)
+        return;
+
+    Simulation* sim = appCore->getSimulation();
+    double time = sim->getTime();
+
+    double bodyRadius = body->getRadius();
+    double starRadius = star->getRadius() * 695700.0; // convert solar radii to km
+
+    if (starRadius <= 0.0 || bodyRadius <= 0.0)
+        return;
+
+    Eigen::Vector3d bodyPos = body->getPosition(time).offsetFromKm(Eigen::Vector3d::Zero());
+    Eigen::Vector3d starPos = star->getPosition(time).offsetFromKm(Eigen::Vector3d::Zero());
+    double starBodyDist = (bodyPos - starPos).norm();
+
+    double targetDist = starBodyDist * (bodyRadius / starRadius);
+    appCore->gotoSelection(selection, targetDist);
+}
