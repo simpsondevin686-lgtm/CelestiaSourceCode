@@ -92,8 +92,16 @@ accumulateBodies(const PlanetarySystem* system,
         if (distStar < 1.0e-6)
             continue;
 
+        // Compute angular separation with atan2 rather than acos. When the
+        // star and body are nearly aligned on the sky (e.g. an exoplanet
+        // transiting its star, seen from light years away), cos(sep) is
+        // 1 - O(1e-13) and acos loses ~6 digits of precision -- enough for
+        // the result to flicker frame-to-frame. atan2(|cross|, dot) preserves
+        // full precision even for arbitrarily small separations.
+        const Eigen::Vector3d cross = starFromObserver.cross(bodyFromObserver);
+        const double sinSep = cross.norm() / (distStar * distBody);
         const double cosSep = starFromObserver.dot(bodyFromObserver) / (distStar * distBody);
-        const double sepRad = std::acos(std::clamp(cosSep, -1.0, 1.0));
+        const double sepRad = std::atan2(sinSep, cosSep);
 
         double bodyRadiusKm = static_cast<double>(body->getRadius());
         const BodyFeaturesManager* mgr = GetBodyFeaturesManager();
