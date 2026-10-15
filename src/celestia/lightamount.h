@@ -185,13 +185,27 @@ computeLightAmount(const Star& star,
     if (starRadiusKm <= 0.0)
         return 1.0;
 
-    // In a multiple-star system, planets often orbit the barycenter rather
-    // than any individual star. Those bodies live in the barycenter's
-    // PlanetarySystem, not in the star's own system. Walk up to the barycenter
-    // and use its system as the source of occluders.
-    const Star* systemRoot = star.getOrbitBarycenter();
-    if (systemRoot == nullptr)
-        systemRoot = &star;
+    // Most stars have their own solar system in the catalog. Some (e.g. the
+    // Sun in builds where the Sun is registered under a barycenter index)
+    // do not -- the planets live under the barycenter's index instead.
+    // Prefer whichever of (star, star's barycenter) actually has a system;
+    // if both do, prefer the barycenter because that is where circumbinary
+    // planets are stored. If neither has one, we simply report no occlusion.
+    const Star* starSystemRoot     = &star;
+    const Star* barycenterSystemRoot = star.getOrbitBarycenter();
+
+    const SolarSystem* starSys = universe.getSolarSystem(starSystemRoot);
+    const SolarSystem* barySys = barycenterSystemRoot != nullptr
+        ? universe.getSolarSystem(barycenterSystemRoot)
+        : nullptr;
+
+    const Star* systemRoot;
+    if (starSys == nullptr && barySys != nullptr)
+        systemRoot = barycenterSystemRoot;
+    else if (barySys != nullptr && starSys != nullptr)
+        systemRoot = barycenterSystemRoot;
+    else
+        systemRoot = starSystemRoot;
 
     const UniversalCoord rootPos = systemRoot->getPosition(jd);
     const UniversalCoord starPos = star.getPosition(jd);
