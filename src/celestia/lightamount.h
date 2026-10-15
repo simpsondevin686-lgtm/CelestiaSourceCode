@@ -63,6 +63,34 @@ discOcclusionFraction(double starRad, double bodyRad, double sepRad)
     return overlapArea / (std::numbers::pi * a2);
 }
 
+// Linear limb darkening coefficient (visible light, Sun-like star).
+// The stellar disc is brighter at the center than at the limb because we
+// see deeper (hotter) layers looking straight down. u = 0 gives uniform
+// brightness; u = 0.6 is a typical value for a G-type star.
+constexpr double LimbDarkeningCoefficient = 0.6;
+
+// Surface brightness at normalized distance d from the star's disc center,
+// relative to the disc-averaged brightness. Returns >1 near the center,
+// <1 near the limb. d = sepRad / starRad, clamped to [0, 1].
+//
+// Derivation:
+//   I(d)    = 1 - u*(1 - sqrt(1 - d^2))         surface brightness profile
+//   I_avg   = 1 - u/3                            disc-averaged brightness
+//   weight  = I(d) / I_avg
+inline double
+limbDarkeningWeight(double sepRad, double starRad)
+{
+    if (starRad <= 0.0)
+        return 1.0;
+
+    const double d  = std::min(sepRad / starRad, 1.0);
+    const double mu = std::sqrt(std::max(0.0, 1.0 - d * d));
+    const double I  = 1.0 - LimbDarkeningCoefficient * (1.0 - mu);
+    const double Iavg = 1.0 - LimbDarkeningCoefficient / 3.0;
+
+    return I / Iavg;
+}
+
 inline void
 accumulateBodies(const PlanetarySystem* system,
                  const Eigen::Vector3d& observerFromStar,
@@ -114,14 +142,22 @@ accumulateBodies(const PlanetarySystem* system,
         }
         const double bodyAngularRadius = bodyRadiusKm / distBody;
 
-        totalOcclusion += discOcclusionFraction(starAngularRadius, bodyAngularRadius, sepRad);
+        // Weight the occluded area by the local surface brightness. A body
+        // transiting the disc center blocks ~1.25x more than its area would
+        // suggest; one at the limb blocks ~0.5x. Accurate for small
+        // occluders (exoplanets, moons); for a Moon-sized occluder spanning
+        // the disc, we approximate with brightness at the body center.
+        const double ldWeight = limbDarkeningWeight(sepRad, starAngularRadius);
+        totalOcclusion += discOcclusionFraction(starAngularRadius, bodyAngularRadius, sepRad)
+                        * ldWeight;
 
         if (const RingSystem* rings = mgr->getRings(body); rings != nullptr)
         {
             const double outerAng = static_cast<double>(rings->outerRadius) / distBody;
             const double innerAng = static_cast<double>(rings->innerRadius) / distBody;
-            totalOcclusion += discOcclusionFraction(starAngularRadius, outerAng, sepRad)
-                            - discOcclusionFraction(starAngularRadius, innerAng, sepRad);
+            totalOcclusion += (discOcclusionFraction(starAngularRadius, outerAng, sepRad)
+                            -  discOcclusionFraction(starAngularRadius, innerAng, sepRad))
+                            * ldWeight;
         }
 
         // Recurse into the body's own satellites, not its parent system.
