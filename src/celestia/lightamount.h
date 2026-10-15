@@ -68,9 +68,10 @@ accumulateBodies(const PlanetarySystem* system,
                  const Eigen::Vector3d& observerFromStar,
                  double starAngularRadius,
                  double jd,
-                 double& totalOcclusion)
+                 double& totalOcclusion,
+                 int depth = 0)
 {
-    if (system == nullptr)
+    if (system == nullptr || depth > 8)
         return;
 
     const int n = system->getSystemSize();
@@ -115,7 +116,11 @@ accumulateBodies(const PlanetarySystem* system,
                             - discOcclusionFraction(starAngularRadius, innerAng, sepRad);
         }
 
-        accumulateBodies(body->getSystem(), observerFromStar, starAngularRadius, jd, totalOcclusion);
+        // Recurse into the body's own satellites, not its parent system.
+        // getSystem() returns the system the body belongs to (would recurse
+        // forever); getSatellites() returns the body's own child system.
+        if (const PlanetarySystem* moons = body->getSatellites(); moons != nullptr)
+            accumulateBodies(moons, observerFromStar, starAngularRadius, jd, totalOcclusion, depth + 1);
     }
 }
 
