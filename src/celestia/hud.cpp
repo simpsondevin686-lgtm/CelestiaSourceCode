@@ -488,7 +488,7 @@ displayStarInfo(const util::NumberFormatter& formatter,
             const double lightAmount =
                 celestia::engine::lightamount::computeLightAmount(star, universe,
                                                                   observerPos, jd);
-            overlay.print(loc, fmt::runtime(_("Light Amount: {:.2f}%\n")),
+            overlay.print(loc, fmt::runtime(_("Light Amount: {:.6f}%\n")),
                           lightAmount * 100.0);
         }
     }
