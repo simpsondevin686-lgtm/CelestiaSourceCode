@@ -17,6 +17,7 @@
 #include <Eigen/Core>
 
 #include <celengine/body.h>
+#include <celengine/atmosphere.h>
 #include <celengine/star.h>
 #include <celengine/universe.h>
 #include <celengine/univcoord.h>
