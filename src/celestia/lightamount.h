@@ -91,15 +91,23 @@ limbDarkeningWeight(double sepRad, double starRad)
     return I / Iavg;
 }
 
+// Positions are supplied in the frame of the system's root star
+// (the barycenter for multiple-star systems), all in km.
 inline void
 accumulateBodies(const PlanetarySystem* system,
-                 const Eigen::Vector3d& observerFromStar,
+                 const Eigen::Vector3d& observerInFrame,
+                 const Eigen::Vector3d& starInFrame,
                  double starAngularRadius,
                  double jd,
                  double& totalOcclusion,
                  int depth = 0)
 {
     if (system == nullptr || depth > 8)
+        return;
+
+    const Eigen::Vector3d starFromObserver = starInFrame - observerInFrame;
+    const double distStar = starFromObserver.norm();
+    if (distStar < 1.0e-6)
         return;
 
     const int n = system->getSystemSize();
@@ -109,15 +117,12 @@ accumulateBodies(const PlanetarySystem* system,
         if (body == nullptr || !body->isVisible())
             continue;
 
-        const Eigen::Vector3d bodyFromStar     = body->getAstrocentricPosition(jd);
-        const Eigen::Vector3d bodyFromObserver = bodyFromStar - observerFromStar;
+        // Astrocentric positions are relative to the frame root, which is
+        // the same root we are using for observerInFrame/starInFrame.
+        const Eigen::Vector3d bodyInFrame     = body->getAstrocentricPosition(jd);
+        const Eigen::Vector3d bodyFromObserver = bodyInFrame - observerInFrame;
         const double distBody = bodyFromObserver.norm();
         if (distBody < 1.0e-6)
-            continue;
-
-        const Eigen::Vector3d starFromObserver = -observerFromStar;
-        const double distStar = starFromObserver.norm();
-        if (distStar < 1.0e-6)
             continue;
 
         // Compute angular separation with atan2 rather than acos. When the
@@ -164,7 +169,7 @@ accumulateBodies(const PlanetarySystem* system,
         // getSystem() returns the system the body belongs to (would recurse
         // forever); getSatellites() returns the body's own child system.
         if (const PlanetarySystem* moons = body->getSatellites(); moons != nullptr)
-            accumulateBodies(moons, observerFromStar, starAngularRadius, jd, totalOcclusion, depth + 1);
+            accumulateBodies(moons, observerInFrame, starInFrame, starAngularRadius, jd, totalOcclusion, depth + 1);
     }
 }
 
@@ -180,21 +185,35 @@ computeLightAmount(const Star& star,
     if (starRadiusKm <= 0.0)
         return 1.0;
 
+    // In a multiple-star system, planets often orbit the barycenter rather
+    // than any individual star. Those bodies live in the barycenter's
+    // PlanetarySystem, not in the star's own system. Walk up to the barycenter
+    // and use its system as the source of occluders.
+    const Star* systemRoot = star.getOrbitBarycenter();
+    if (systemRoot == nullptr)
+        systemRoot = &star;
+
+    const UniversalCoord rootPos = systemRoot->getPosition(jd);
     const UniversalCoord starPos = star.getPosition(jd);
 
-    const Eigen::Vector3d observerFromStar = observerPos.offsetFromKm(starPos);
-    const double distStar = observerFromStar.norm();
+    // Working frame: root (barycenter or the star itself) at the origin, km.
+    const Eigen::Vector3d observerInFrame = observerPos.offsetFromKm(rootPos);
+    const Eigen::Vector3d starInFrame     = starPos.offsetFromKm(rootPos);
+
+    const Eigen::Vector3d starFromObserver = starInFrame - observerInFrame;
+    const double distStar = starFromObserver.norm();
     if (distStar < 1.0e-6)
         return 1.0;
 
     const double starAngularRadius = starRadiusKm / distStar;
 
     double totalOcclusion = 0.0;
-    const SolarSystem* sys = universe.getSolarSystem(&star);
+    const SolarSystem* sys = universe.getSolarSystem(systemRoot);
     if (sys != nullptr && sys->getPlanets() != nullptr)
     {
         detail::accumulateBodies(sys->getPlanets(),
-                                 observerFromStar,
+                                 observerInFrame,
+                                 starInFrame,
                                  starAngularRadius,
                                  jd,
                                  totalOcclusion);
