@@ -11,6 +11,7 @@
 // of the License, or (at your option) any later version.
 
 #include "hud.h"
+#include "lightamount.h"
 
 #include <algorithm>
 #include <cassert>
@@ -421,7 +422,9 @@ displayStarInfo(const util::NumberFormatter& formatter,
                 const Universe& universe,
                 double distance,
                 const HudSettings& hudSettings,
-                const std::locale& loc)
+                const std::locale& loc,
+                const UniversalCoord& observerPos,
+                double jd)
 {
     overlay.printf(_("Distance: %s\n"),
                    DistanceLyToStr(formatter, distance, 5, hudSettings.measurementSystem));
@@ -479,6 +482,14 @@ displayStarInfo(const util::NumberFormatter& formatter,
                 auto period = static_cast<float>(star.getRotationModel()->getPeriod());
                 displayRotationPeriod(formatter, overlay, period);
             }
+
+            // Light Amount: fraction of this star's light reaching the observer
+            // given all bodies currently between them on the sky.
+            const double lightAmount =
+                celestia::engine::lightamount::computeLightAmount(star, universe,
+                                                                  observerPos, jd);
+            overlay.print(loc, fmt::runtime(_("Light Amount: {:.2f}%\n")),
+                          lightAmount * 100.0);
         }
     }
 
@@ -1156,7 +1167,9 @@ Hud::renderSelectionInfo(const WindowMetrics& metrics,
                             *(sim->getUniverse()),
                              astro::kilometersToLightYears(v.norm()),
                              m_hudSettings,
-                             loc);
+                             loc,
+                             sim->getActiveObserver()->getPosition(),
+                             sim->getTime());
         }
         break;
 
