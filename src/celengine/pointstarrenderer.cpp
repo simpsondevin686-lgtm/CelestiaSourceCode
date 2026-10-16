@@ -97,12 +97,23 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
     if (distance > distanceLimit)
         return;
 
-    // Collect visually dominant stars so the renderer can use them as
-    // supplementary light sources for every body in the scene. A star
-    // this bright would obviously affect the ambient illumination, but
-    // Celestia's per-system light list only knows about the primary star.
-    if (brightStarCandidates != nullptr && appMag < brightStarThresholdMag)
-        brightStarCandidates->push_back(&star);
+    // Collect stars whose irradiance at the observer exceeds a physical
+    // threshold, so they can act as supplementary light sources for every
+    // body in the scene. The threshold is expressed in solar constants
+    // (1.0 = the Sun's irradiance at 1 AU). A star qualifies only if its
+    // delivered light is comparable to a visible second light source --
+    // the default is the full Moon's contribution to Earth (2.5e-6).
+    if (brightStarCandidates != nullptr)
+    {
+        const float L = star.getLuminosity();
+        if (L > 0.0f && distance > 0.0f)
+        {
+            const float dAU = astro::lightYearsToAU(distance);
+            const float irradiance = L / (dAU * dAU);
+            if (irradiance >= brightStarThresholdIrradiance)
+                brightStarCandidates->push_back(&star);
+        }
+    }
 
     Vector3f starPos = star.getPosition();
 
