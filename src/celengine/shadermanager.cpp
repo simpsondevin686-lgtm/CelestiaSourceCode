@@ -683,17 +683,6 @@ Shadow(unsigned int light,
 
     source += std::string(visibility) + " *= 1.0 - " + std::string(radius) + ";\n";
 
-    // Refracted sunlight: as the shadow deepens, more of the direct sun
-    // is replaced by light bent through the caster's atmosphere. The
-    // refracted color comes from Rayleigh coefficients (chromatic), the
-    // scale is a perceptual gain so the tint is visible without looking
-    // like a normal full-brightness surface.
-    constexpr float RefractedLightScale = 0.12f;
-    source += "diff.rgb += " + std::string(radius) + " * " +
-              IndexedParameter("shadowRefraction", light, shadow) + " * " +
-              LightProperty(light, "diffuse") + " * " +
-              std::to_string(RefractedLightScale) + ";\n";
-
     return source;
 }
 
