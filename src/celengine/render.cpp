@@ -1616,6 +1616,44 @@ void Renderer::render(const Observer& observer,
     if (util::is_set(renderFlags, RenderFlags::ShowStars) && universe.getStarCatalog() != nullptr)
     {
         renderPointStars(*universe.getStarCatalog(), faintestMag, observer);
+
+    // Merge visually dominant stars (collected during the pass above) into
+    // the frame's light source list, so bodies are illuminated by any star
+    // whose apparent brightness exceeds BrightStarThresholdMag -- not just
+    // by their own primary star. Capped at MaxLights total.
+    {
+        constexpr unsigned int MaxLightsLocal = 8;   // matches celengine::MaxLights
+        for (const Star* s : brightStarCandidates)
+        {
+            if (s == nullptr || lightSourceList.size() >= MaxLightsLocal)
+                break;
+
+            const auto starPosLY = s->getPosition().cast<double>();
+            const auto obsPosLY  = observer.getPosition().toLy();
+            const double distLy  = (starPosLY - obsPosLY).norm();
+            if (distLy < 1.0e-9)
+                continue;
+
+            bool alreadyPresent = false;
+            for (const auto& existing : lightSourceList)
+            {
+                if (existing.position.offsetFromKm(UniversalCoord::CreateLy(starPosLY)).squaredNorm() < 1.0)
+                {
+                    alreadyPresent = true;
+                    break;
+                }
+            }
+            if (alreadyPresent)
+                continue;
+
+            LightSource ls;
+            ls.position   = UniversalCoord::CreateLy(starPosLY);
+            ls.luminosity = s->getLuminosity();
+            ls.color      = ColorTemperatureTable::GetDefault()->lookupColor(s->getTemperature());
+            ls.radius     = s->getRadius();
+            lightSourceList.push_back(ls);
+        }
+    }
     }
 
     // Translate the camera before rendering the asterisms and boundaries
@@ -4439,6 +4477,12 @@ void Renderer::renderPointStars(const StarDatabase& starDB,
     starRenderer.distanceLimit     = distanceLimit;
     starRenderer.labelMode         = labelMode;
     starRenderer.SolarSystemMaxDistance = SolarSystemMaxDistance;
+
+    // Collect visually dominant stars during the pass below; clear the
+    // previous frame's candidates first.
+    brightStarCandidates.clear();
+    starRenderer.brightStarCandidates   = &brightStarCandidates;
+    starRenderer.brightStarThresholdMag = BrightStarThresholdMag;
     starRenderer.starStyle         = starStyle;
     starRenderer.psf.pointRadius   = starPointRadius;
     starRenderer.psf.pointScale    = static_cast<float>(screenDpi) / 96.0f;
