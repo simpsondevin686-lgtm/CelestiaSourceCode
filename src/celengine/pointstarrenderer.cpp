@@ -120,17 +120,18 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
         if (hasOrbit)
             orbitSizeInPixels = orbitalRadius / (distance * pixelSize);
 
-        // Special handling for stars less than one light year away . . .
-        // We can't just go ahead and render a nearby star in the usual way
-        // for two reasons:
-        //   * It may be clipped by the near plane
-        //   * It may be large enough that we should render it as a mesh
-        //     instead of a particle
-        // It's possible that the second condition might apply for stars
-        // further than a solar system size if the star is huge, the fov is
-        // very small and the resolution is high.  We'll ignore this for now
-        // and use the most inexpensive test possible . . .
-        if (distance < SolarSystemMaxDistance || orbitSizeInPixels > 1.0f)
+        // Decide point-vs-disc by apparent size, not raw distance. A star
+        // whose projected disc is at least MinDiscSizeInPixels across should
+        // be drawn as a mesh/disc; smaller than that, it is a point sprite.
+        //
+        // We always compute the star's angular size here so the decision is
+        // independent of how far away it is. That means a supersized star
+        // (0.9 LY radius) stays a disc no matter the distance, and only
+        // collapses into a point when it is truly sub-pixel.
+        //
+        // Also handles the two problems the previous comment mentioned for
+        // near stars: near-plane clipping, and the fact that very close
+        // stars should be drawn as meshes rather than particles.
         {
             // Compute the position of the observer relative to the star.
             // This is a much more accurate (and expensive) distance
@@ -148,10 +149,14 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
             discSizeInPixels = star.getRadius() / astro::lightYearsToKilometers(distance) / pixelSize;
         }
 
-        // Stars closer than the maximum solar system size are actually
-        // added to the render list and depth sorted, since they may occlude
-        // planets.
-        if (distance > SolarSystemMaxDistance)
+        // Stars whose apparent disc is at least MinDiscSizeInPixels across
+        // are drawn as points; anything larger goes into the render list and
+        // is drawn as a mesh, so it can occlude planets and be visibly
+        // resolved. The threshold is in pixels, not in light years.
+        constexpr float MinDiscSizeInPixels = 1.0f;
+        const bool drawAsPoint = discSizeInPixels < MinDiscSizeInPixels
+                              && orbitSizeInPixels < MinDiscSizeInPixels;
+        if (drawAsPoint)
         {
             if (starStyle == StarStyle::PointSpreadFunction)
             {
@@ -257,6 +262,9 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
             rle.renderableType = RenderListEntry::RenderableStar;
             rle.star = &star;
 
+            // Disc-rendered stars go into the render list and are depth sorted
+            // so they can occlude planets. Only reached when the star's disc
+            // exceeds MinDiscSizeInPixels.
             // Objects in the render list are always rendered relative to
             // a viewer at the origin--this is different than for distant
             // stars.
