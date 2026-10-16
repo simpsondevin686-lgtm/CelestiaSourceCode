@@ -1533,7 +1533,7 @@ void Renderer::render(const Observer& observer,
     faintestPlanetMag = faintestMag;
     if (util::is_set(renderFlags, RenderFlags::ShowSolarSystemObjects | RenderFlags::ShowOrbits))
     {
-        buildNearSystemsLists(universe, observer, xfrustum, now);
+        buildNearSystemsLists(universe, observer, xfrustum, now, sel);
     }
 
     if (auto cockpitObject = observer.getCockpit(); !cockpitObject.empty())
@@ -6055,12 +6055,64 @@ void
 Renderer::buildNearSystemsLists(const Universe &universe,
                                 const Observer &observer,
                                 const math::InfiniteFrustum &xfrustum,
-                                double now)
+                                double now,
+                                const Selection &sel)
 {
     UniversalCoord observerPos = observer.getPosition();
     Eigen::Quaterniond observerOrient = getCameraOrientation();
 
     universe.getNearStars(observerPos, SolarSystemMaxDistance, nearStars);
+
+    // Always keep the primary star of the current selection in the near-star
+    // list, no matter how far it lies from the observer. This lets a selected
+    // spacecraft (or any body) stay rendered, selectable, and lit as it
+    // travels away from its home system. Lighting naturally follows the
+    // inverse-square law already computed in setupObjectLighting, so a probe
+    // that has drifted far from the Sun becomes dark, while one that passes
+    // near another star is lit by that star.
+    {
+        const Star* selectedStar = nullptr;
+
+        switch (sel.getType())
+        {
+        case SelectionType::Star:
+            selectedStar = sel.star();
+            break;
+
+        case SelectionType::Body:
+            for (const Body* b = sel.body(); b != nullptr; )
+            {
+                const PlanetarySystem* sys = b->getSystem();
+                if (sys == nullptr)
+                    break;
+                if (Star* s = sys->getStar(); s != nullptr)
+                {
+                    selectedStar = s;
+                    break;
+                }
+                b = sys->getPrimaryBody();
+            }
+            break;
+
+        default:
+            break;
+        }
+
+        if (selectedStar != nullptr)
+        {
+            bool present = false;
+            for (const Star* s : nearStars)
+            {
+                if (s == selectedStar)
+                {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present)
+                nearStars.push_back(selectedStar);
+        }
+    }
 
     // Set up direct light sources (i.e. just stars at the moment)
     // Skip if only star orbits to be shown
