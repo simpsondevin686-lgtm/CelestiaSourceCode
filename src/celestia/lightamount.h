@@ -91,12 +91,13 @@ limbDarkeningWeight(double sepRad, double starRad)
     return I / Iavg;
 }
 
-// Positions are supplied in the frame of the system's root star
-// (the barycenter for multiple-star systems), all in km.
+// All positions in this function are absolute (in the same global frame
+// used by Star::getPosition and Body::getPosition). There is no barycenter
+// ambiguity because we never assume a specific frame tree root.
 inline void
 accumulateBodies(const PlanetarySystem* system,
-                 const Eigen::Vector3d& observerInFrame,
-                 const Eigen::Vector3d& starInFrame,
+                 const UniversalCoord& observerPos,
+                 const Eigen::Vector3d& starFromObserver,
                  double starAngularRadius,
                  double jd,
                  double& totalOcclusion,
@@ -105,7 +106,6 @@ accumulateBodies(const PlanetarySystem* system,
     if (system == nullptr || depth > 8)
         return;
 
-    const Eigen::Vector3d starFromObserver = starInFrame - observerInFrame;
     const double distStar = starFromObserver.norm();
     if (distStar < 1.0e-6)
         return;
@@ -117,10 +117,9 @@ accumulateBodies(const PlanetarySystem* system,
         if (body == nullptr || !body->isVisible())
             continue;
 
-        // Astrocentric positions are relative to the frame root, which is
-        // the same root we are using for observerInFrame/starInFrame.
-        const Eigen::Vector3d bodyInFrame     = body->getAstrocentricPosition(jd);
-        const Eigen::Vector3d bodyFromObserver = bodyInFrame - observerInFrame;
+        // Absolute position of the body, in the same frame as the observer.
+        const Eigen::Vector3d bodyFromObserver =
+            body->getPosition(jd).offsetFromKm(observerPos);
         const double distBody = bodyFromObserver.norm();
         if (distBody < 1.0e-6)
             continue;
@@ -169,7 +168,7 @@ accumulateBodies(const PlanetarySystem* system,
         // getSystem() returns the system the body belongs to (would recurse
         // forever); getSatellites() returns the body's own child system.
         if (const PlanetarySystem* moons = body->getSatellites(); moons != nullptr)
-            accumulateBodies(moons, observerInFrame, starInFrame, starAngularRadius, jd, totalOcclusion, depth + 1);
+            accumulateBodies(moons, observerPos, starFromObserver, starAngularRadius, jd, totalOcclusion, depth + 1);
     }
 }
 
@@ -185,49 +184,34 @@ computeLightAmount(const Star& star,
     if (starRadiusKm <= 0.0)
         return 1.0;
 
-    // Most stars have their own solar system in the catalog. Some (e.g. the
-    // Sun in builds where the Sun is registered under a barycenter index)
-    // do not -- the planets live under the barycenter's index instead.
-    // Prefer whichever of (star, star's barycenter) actually has a system;
-    // if both do, prefer the barycenter because that is where circumbinary
-    // planets are stored. If neither has one, we simply report no occlusion.
-    const Star* starSystemRoot     = &star;
-    const Star* barycenterSystemRoot = star.getOrbitBarycenter();
-
-    const SolarSystem* starSys = universe.getSolarSystem(starSystemRoot);
-    const SolarSystem* barySys = barycenterSystemRoot != nullptr
-        ? universe.getSolarSystem(barycenterSystemRoot)
-        : nullptr;
-
-    const Star* systemRoot;
-    if (starSys == nullptr && barySys != nullptr)
-        systemRoot = barycenterSystemRoot;
-    else if (barySys != nullptr && starSys != nullptr)
-        systemRoot = barycenterSystemRoot;
-    else
-        systemRoot = starSystemRoot;
-
-    const UniversalCoord rootPos = systemRoot->getPosition(jd);
+    // Absolute positions. No barycenter frame games: Star::getPosition(jd)
+    // and Body::getPosition(jd) are both in the global frame, so vectors
+    // between them are frame-agnostic and immune to any barycenter setup.
     const UniversalCoord starPos = star.getPosition(jd);
 
-    // Working frame: root (barycenter or the star itself) at the origin, km.
-    const Eigen::Vector3d observerInFrame = observerPos.offsetFromKm(rootPos);
-    const Eigen::Vector3d starInFrame     = starPos.offsetFromKm(rootPos);
-
-    const Eigen::Vector3d starFromObserver = starInFrame - observerInFrame;
+    const Eigen::Vector3d starFromObserver = starPos.offsetFromKm(observerPos);
     const double distStar = starFromObserver.norm();
     if (distStar < 1.0e-6)
         return 1.0;
 
     const double starAngularRadius = starRadiusKm / distStar;
 
+    // Bodies may be stored either under the star's own system or, for
+    // circumbinary planets, under the barycenter's system. Try the star
+    // first; if it has no planets, fall back to the barycenter.
+    const SolarSystem* sys = universe.getSolarSystem(&star);
+    if ((sys == nullptr || sys->getPlanets() == nullptr) &&
+        star.getOrbitBarycenter() != nullptr)
+    {
+        sys = universe.getSolarSystem(star.getOrbitBarycenter());
+    }
+
     double totalOcclusion = 0.0;
-    const SolarSystem* sys = universe.getSolarSystem(systemRoot);
     if (sys != nullptr && sys->getPlanets() != nullptr)
     {
         detail::accumulateBodies(sys->getPlanets(),
-                                 observerInFrame,
-                                 starInFrame,
+                                 observerPos,
+                                 starFromObserver,
                                  starAngularRadius,
                                  jd,
                                  totalOcclusion);
