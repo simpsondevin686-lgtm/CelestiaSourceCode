@@ -102,11 +102,4 @@ public:
     StarStyle starStyle                         { StarStyle::FuzzyPointStars };
     PsfState  psf;
 
-    // Stars whose apparent magnitude is brighter than brightStarThresholdMag
-    // are collected here during the point-star pass. The renderer merges
-    // them into every body's light-source list so a visually dominant star
-    // actually illuminates nearby bodies, even if it isn't the body's own
-    // primary.
-    std::vector<const Star*>* brightStarCandidates  { nullptr };
-    float                     brightStarThresholdIrradiance{ 2.5e-6f };
 };
