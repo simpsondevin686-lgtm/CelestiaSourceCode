@@ -1617,41 +1617,39 @@ void Renderer::render(const Observer& observer,
     {
         renderPointStars(*universe.getStarCatalog(), faintestMag, observer);
 
-    // Merge visually dominant stars (collected during the pass above) into
+    // Merge visually dominant stars collected during the pass above into
     // the frame's light source list, so bodies are illuminated by any star
     // whose apparent brightness exceeds BrightStarThresholdMag -- not just
-    // by their own primary star. Capped at MaxLights total.
+    // by their own primary star. Reuses setupLightSources so tint colors,
+    // the DARK_POINT check, and luminosity handling match primary stars.
+    if (!brightStarCandidates.empty())
     {
-        constexpr unsigned int MaxLightsLocal = 8;   // matches celengine::MaxLights
-        for (const Star* s : brightStarCandidates)
+        std::vector<LightSource> supplementary;
+        setupLightSources(brightStarCandidates,
+                          observer.getPosition(),
+                          observer.getTime(),
+                          supplementary,
+                          tintSaturation,
+                          starColors.type() == ColorTableType::Enhanced ? nullptr : &tintColors);
+
+        for (const auto& ls : supplementary)
         {
-            if (s == nullptr || lightSourceList.size() >= MaxLightsLocal)
+            if (lightSourceList.size() >= MaxLights)
                 break;
 
-            const auto starPosLY = s->getPosition().cast<double>();
-            const auto obsPosLY  = observer.getPosition().toLy();
-            const double distLy  = (starPosLY - obsPosLY).norm();
-            if (distLy < 1.0e-9)
-                continue;
-
+            // Skip if this star is already in the list (e.g. it is the
+            // body's own primary and was added by buildNearSystemsLists).
             bool alreadyPresent = false;
             for (const auto& existing : lightSourceList)
             {
-                if (existing.position.offsetFromKm(UniversalCoord::CreateLy(starPosLY)).squaredNorm() < 1.0)
+                if ((existing.position - ls.position).squaredNorm() < 1.0)
                 {
                     alreadyPresent = true;
                     break;
                 }
             }
-            if (alreadyPresent)
-                continue;
-
-            LightSource ls;
-            ls.position   = UniversalCoord::CreateLy(starPosLY);
-            ls.luminosity = s->getLuminosity();
-            ls.color      = ColorTemperatureTable::GetDefault()->lookupColor(s->getTemperature());
-            ls.radius     = s->getRadius();
-            lightSourceList.push_back(ls);
+            if (!alreadyPresent)
+                lightSourceList.push_back(ls);
         }
     }
     }
