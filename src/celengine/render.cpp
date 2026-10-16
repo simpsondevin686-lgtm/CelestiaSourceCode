@@ -3003,6 +3003,39 @@ bool Renderer::testEclipse(const Body& receiver,
             shadow.maxDepth = std::min(1.0f, math::square(appOccluderRadius / appSunRadius));
             shadow.caster = &caster;
 
+            // If the caster has an atmosphere, compute the chromaticity of
+            // sunlight refracted into the umbra. Grazing rays pass through
+            // the atmosphere, are Rayleigh-scattered, and reach the receiver
+            // reddened. The color is derived from the atmosphere's own
+            // Rayleigh coefficients, so Earth gives a warm copper-red while
+            // airless bodies (zero coefficients) contribute nothing.
+            if (const Atmosphere* atm = GetBodyFeaturesManager()->getAtmosphere(&caster);
+                atm != nullptr && atm->rayleighCoeff.minCoeff() > 0.0f)
+            {
+                const float R_m = caster.getRadius() * 1000.0f;
+                const float H_m = atm->rayleighScaleHeight > 0.0f
+                                ? atm->rayleighScaleHeight
+                                : atm->height;
+                if (R_m > 0.0f && H_m > 0.0f)
+                {
+                    // Grazing chord through the shell. Chapman function at
+                    // 90 degrees zenith; halved because the dominant
+                    // contribution to the umbra comes from the upper, less
+                    // dense atmosphere, not the densest grazing layer.
+                    const float path_m = 0.5f *
+                        std::sqrt(std::numbers::pi_v<float> * R_m * H_m * 0.5f);
+
+                    Eigen::Vector3f tau = atm->rayleighCoeff * path_m;
+                    Eigen::Vector3f T;
+                    for (int i = 0; i < 3; ++i)
+                        T[i] = std::exp(-tau[i]);
+
+                    const float tMax = T.maxCoeff();
+                    if (tMax > 0.0f)
+                        shadow.refractedColor = T / tMax;
+                }
+            }
+
             // Ignore transits that don't produce a visible shadow.
             if (shadow.maxDepth > 1.0f / 256.0f)
                 shadows.push_back(shadow);
