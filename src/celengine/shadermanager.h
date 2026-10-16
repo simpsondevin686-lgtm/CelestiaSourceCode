@@ -227,6 +227,7 @@ struct CelestiaGLProgramShadow
     Vec4ShaderParameter texGenT;
     FloatShaderParameter falloff;
     FloatShaderParameter maxDepth;
+    Vec3ShaderParameter refraction;
 };
 
 struct CelestiaGLProgramTextureTransform
