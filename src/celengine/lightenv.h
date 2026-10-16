@@ -47,6 +47,11 @@ struct EclipseShadow
     float penumbraRadius{ 0.0f };
     float umbraRadius{ 0.0f };
     float maxDepth{ 0.0f };
+    // Chromaticity of sunlight refracted through the caster's atmosphere
+    // into the umbra. Derived from Rayleigh coefficients, so Earth gives
+    // a copper-red, Mars would give a different tint, and an airless
+    // caster gives (0,0,0) — a plain dark shadow.
+    Eigen::Vector3f refractedColor{ Eigen::Vector3f::Zero() };
 };
 
 struct RingShadow
