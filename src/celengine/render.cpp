@@ -1616,7 +1616,6 @@ void Renderer::render(const Observer& observer,
     if (util::is_set(renderFlags, RenderFlags::ShowStars) && universe.getStarCatalog() != nullptr)
     {
         renderPointStars(*universe.getStarCatalog(), faintestMag, observer);
-
     }
 
     // Translate the camera before rendering the asterisms and boundaries
@@ -4440,7 +4439,6 @@ void Renderer::renderPointStars(const StarDatabase& starDB,
     starRenderer.distanceLimit     = distanceLimit;
     starRenderer.labelMode         = labelMode;
     starRenderer.SolarSystemMaxDistance = SolarSystemMaxDistance;
-
     starRenderer.starStyle         = starStyle;
     starRenderer.psf.pointRadius   = starPointRadius;
     starRenderer.psf.pointScale    = static_cast<float>(screenDpi) / 96.0f;
@@ -5993,54 +5991,15 @@ Renderer::buildNearSystemsLists(const Universe &universe,
 
     universe.getNearStars(observerPos, SolarSystemMaxDistance, nearStars);
 
-    // Set up direct light sources (i.e. stars at the moment). Two passes:
-    //   1. The current solar system's stars (existing behaviour).
-    //   2. A wide-radius, magnitude-culled query picking up exceptionally
-    //      bright stars whose light would meaningfully illuminate the
-    //      scene even though they are not the body's primary. The octree
-    //      skips faint subtrees in a single comparison, so the wide radius
-    //      stays cheap.
-    // Skip if only star orbits to be shown.
+    // Set up direct light sources (i.e. just stars at the moment)
+    // Skip if only star orbits to be shown
     if (util::is_set(renderFlags, RenderFlags::ShowSolarSystemObjects))
-    {
         setupLightSources(nearStars,
                           observerPos,
                           now,
                           lightSourceList,
                           tintSaturation,
                           starColors.type() == ColorTableType::Enhanced ? nullptr : &tintColors);
-
-        std::vector<const Star*> wideStars;
-        universe.getNearStars(observerPos, 200.0f, -5.0f, wideStars);
-
-        for (const Star* s : wideStars)
-        {
-            if (lightSourceList.size() >= MaxLights)
-                break;
-
-            const Eigen::Vector3d starPosKm =
-                s->getPosition(now).offsetFromKm(observerPos);
-
-            bool present = false;
-            for (const auto& existing : lightSourceList)
-            {
-                if ((existing.position - starPosKm).squaredNorm() < 1.0)
-                {
-                    present = true;
-                    break;
-                }
-            }
-            if (present)
-                continue;
-
-            LightSource ls;
-            ls.position = starPosKm;
-            ls.luminosity = s->getLuminosity();
-            ls.radius = s->getRadius();
-            ls.color = starColors.lookupColor(s->getTemperature());
-            lightSourceList.push_back(ls);
-        }
-    }
 
     // Traverse the frame trees of each nearby solar system and
     // build the list of objects to be rendered.
