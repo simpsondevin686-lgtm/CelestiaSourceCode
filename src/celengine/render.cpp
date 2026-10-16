@@ -129,7 +129,7 @@ static constexpr float MinNearPlaneDistance = 0.0001f; // km
 // coefficients (computed in testEclipse); this value is a perceptual gain
 // only. It scales how visible the reddening or blue-shifting is during
 // totality. Typical eclipses look right in the 0.02-0.10 range.
-static constexpr float EclipseRefractionGain = 0.05f;
+static constexpr float EclipseRefractionGain = 0.5f;
 static constexpr float MaxFarNearRatio      = 2000000.0f;
 
 static constexpr float MinRelativeOccluderRadius = 0.005f;
