@@ -4693,18 +4693,33 @@ void Renderer::renderDeepSkyObjects(const Universe& universe,
         const double outer2 = outer * outer;
         const double halfDiag = 0.5 * cellSz * 1.7320508075688772;
 
+        // Precompute the integer half-width of the inner cube so we can
+        // skip every cell whose centre lies strictly inside it. This is
+        // much cheaper than the per-cell distance test and prunes the
+        // vast majority of iterations when inner << outer.
+        const int innerCells = static_cast<int>(std::floor(inner / cellSz));
+
         for (int cz = cz0 - span; cz <= cz0 + span; ++cz)
-        for (int cy = cy0 - span; cy <= cy0 + span; ++cy)
-        for (int cx = cx0 - span; cx <= cx0 + span; ++cx)
         {
-            // Reject cells entirely inside inner or entirely beyond outer.
-            const Eigen::Vector3d cc((cx + 0.5) * cellSz,
-                                     (cy + 0.5) * cellSz,
-                                     (cz + 0.5) * cellSz);
-            const Eigen::Vector3d d = cc - observer3;
-            const double dist2 = d.squaredNorm();
-            if (dist2 < inner2 - halfDiag * inner)  continue;
-            if (dist2 > outer2 + halfDiag * outer + halfDiag * halfDiag) continue;
+            const int dz = std::abs(cz - cz0);
+            for (int cy = cy0 - span; cy <= cy0 + span; ++cy)
+            {
+                const int dy = std::abs(cy - cy0);
+                for (int cx = cx0 - span; cx <= cx0 + span; ++cx)
+                {
+                    const int dx = std::abs(cx - cx0);
+                    // Cell-centre inside inner cube: skip.
+                    if (dx < innerCells && dy < innerCells && dz < innerCells)
+                        continue;
+
+                    // Reject cells entirely inside inner or entirely beyond outer.
+                    const Eigen::Vector3d cc((cx + 0.5) * cellSz,
+                                             (cy + 0.5) * cellSz,
+                                             (cz + 0.5) * cellSz);
+                    const Eigen::Vector3d d = cc - observer3;
+                    const double dist2 = d.squaredNorm();
+                    if (dist2 < inner2 - halfDiag * inner)  continue;
+                    if (dist2 > outer2 + halfDiag * outer + halfDiag * halfDiag) continue;
 
             proc::CellCoord key{ cx, cy, cz };
             auto it = proceduralGalaxyCache.find(key);
@@ -4717,11 +4732,13 @@ void Renderer::renderDeepSkyObjects(const Universe& universe,
                 it = newIt;
             }
 
-            for (const auto& g : it->second.galaxies)
-            {
-                if (!g) continue;
-                const double distToGal = (g->getPosition() - observer3).norm();
-                dsoRenderer.process(g, distToGal, g->getAbsoluteMagnitude());
+                    for (const auto& g : it->second.galaxies)
+                    {
+                        if (!g) continue;
+                        const double distToGal = (g->getPosition() - observer3).norm();
+                        dsoRenderer.process(g, distToGal, g->getAbsoluteMagnitude());
+                    }
+                }
             }
         }
     }
