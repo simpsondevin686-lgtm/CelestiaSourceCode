@@ -4480,7 +4480,7 @@ void Renderer::renderPointStars(const StarDatabase& starDB,
     // previous frame's candidates first.
     brightStarCandidates.clear();
     starRenderer.brightStarCandidates   = &brightStarCandidates;
-    starRenderer.brightStarThresholdMag = BrightStarThresholdMag;
+    starRenderer.brightStarThresholdIrradiance = BrightStarThresholdIrradiance;
     starRenderer.starStyle         = starStyle;
     starRenderer.psf.pointRadius   = starPointRadius;
     starRenderer.psf.pointScale    = static_cast<float>(screenDpi) / 96.0f;
