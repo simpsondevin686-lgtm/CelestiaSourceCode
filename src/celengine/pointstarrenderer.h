@@ -101,5 +101,4 @@ public:
 
     StarStyle starStyle                         { StarStyle::FuzzyPointStars };
     PsfState  psf;
-
 };
