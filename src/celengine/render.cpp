@@ -2230,7 +2230,8 @@ setupObjectLighting(const vector<LightSource>& suns,
                     const Vector3f& objScale,
                     const Vector3f& objPosition_eye,
                     bool isNormalized,
-                    LightingState& ls)
+                    LightingState& ls,
+                    bool physicalLighting)
 {
     unsigned int nLights = min(MaxLights, (unsigned int) suns.size());
     if (nLights == 0)
@@ -2333,15 +2334,36 @@ setupObjectLighting(const vector<LightSource>& suns,
 
     if (gl::sRGBRendering)
     {
-        // Normalize light source irradiance so the brightest light is ~1.0.
+        // Physical bodies (spacecraft, etc.) preserve absolute irradiance
+        // (luminosity / AU^2) so they dim realistically with distance.
+        // Everything else keeps the legacy normalization.
+        const float normalization = physicalLighting
+                                  ? 1.0f
+                                  : (1.0f / totalIrradiance);
+
         ls.nLights = 0;
         for (i = 0; i < nLights; i++)
         {
-            ls.lights[i].irradiance /= totalIrradiance;
+            ls.lights[i].irradiance *= normalization;
 
             // Compute the direction of the light in object space
             ls.lights[i].direction_obj = m * ls.lights[i].direction_eye;
 
+            ls.nLights++;
+        }
+    }
+    else if (physicalLighting)
+    {
+        // Physical bodies preserve absolute irradiance. No normalization,
+        // no gamma compression. The shader receives the true L/d^2 value;
+        // a body far from any star goes black, one passing near a star is
+        // lit at whatever brightness the inverse-square law gives it.
+        constexpr float MinVisibleIrradiance = 1.0e-6f;
+
+        ls.nLights = 0;
+        for (i = 0; i < nLights && ls.lights[i].irradiance > MinVisibleIrradiance; i++)
+        {
+            ls.lights[i].direction_obj = m * ls.lights[i].direction_eye;
             ls.nLights++;
         }
     }
@@ -3127,6 +3149,13 @@ void Renderer::setupPlanetLighting(Body& body, // NOSONAR(cpp:S107,cpp:S3776)
                                    LightingState& lights,
                                    Quaterniond& q)
 {
+    // Physical lighting applies only to spacecraft: their illumination
+    // follows L/d^2 exactly, so a probe far from any star goes dark and one
+    // passing near a star lights up. All other bodies use the legacy
+    // normalization.
+    const bool isSpacecraftBody =
+        util::is_set(body.getClassification(), BodyClassification::Spacecraft);
+
     auto bodyFeaturesManager = GetBodyFeaturesManager();
 
         if (displayedSurface.empty())
@@ -3193,7 +3222,8 @@ void Renderer::setupPlanetLighting(Body& body, // NOSONAR(cpp:S107,cpp:S3776)
                             scaleFactors,
                             pos,
                             isNormalized,
-                            lights);
+                            lights,
+                            isSpacecraftBody);
         assert(lights.nLights <= MaxLights);
 
         lights.ambientColor = ambientColor.toVector3();
@@ -3443,6 +3473,9 @@ void Renderer::renderRingSystem(Body& body,
                                 const Matrices &m,
                                 celestia::render::RingRenderHalf renderHalf)
 {
+    const bool isSpacecraftBody =
+        util::is_set(body.getClassification(), BodyClassification::Spacecraft);
+
     const BodyFeaturesManager* bodyFeaturesManager = GetBodyFeaturesManager();
 
     const RingSystem* rings = bodyFeaturesManager->getRings(&body);
@@ -3510,7 +3543,8 @@ void Renderer::renderRingSystem(Body& body,
                             scaleFactors,
                             pos,
                             isNormalized,
-                            lights);
+                            lights,
+                            isSpacecraftBody);
         assert(lights.nLights <= MaxLights);
         lights.ambientColor = ambientColor.toVector3();
         if (split)
