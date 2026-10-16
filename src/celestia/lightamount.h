@@ -11,7 +11,6 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
 #include <numbers>
 
@@ -25,23 +24,6 @@
 
 namespace celestia::engine::lightamount
 {
-
-// Most recently computed light-amount value. Updated by computeLightAmount
-// each time it runs (called by the HUD when a star is selected). Read by
-// the Android overlay via a JNI getter. Single-writer, multi-reader; a
-// relaxed atomic is sufficient since the exact sample timing doesn't
-// matter for a visual indicator.
-inline std::atomic<float>& lastLightAmountStorage()
-{
-    static std::atomic<float> value{ 1.0f };
-    return value;
-}
-
-inline float getCurrentLightAmount()
-{
-    return lastLightAmountStorage().load(std::memory_order_relaxed);
-}
-
 
 namespace detail
 {
@@ -236,9 +218,7 @@ computeLightAmount(const Star& star,
     }
 
     totalOcclusion = std::clamp(totalOcclusion, 0.0, 1.0);
-    const float result = static_cast<float>(1.0 - totalOcclusion);
-    lastLightAmountStorage().store(result, std::memory_order_relaxed);
-    return result;
+    return 1.0 - totalOcclusion;
 }
 
 } // namespace celestia::engine::lightamount
