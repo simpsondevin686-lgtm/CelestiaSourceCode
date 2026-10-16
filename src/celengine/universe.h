@@ -82,6 +82,13 @@ public:
                       float maxDistance,
                       std::vector<const Star*>& stars) const;
 
+    // Magnitude-culled variant: the star octree skips entire subtrees of
+    // stars fainter than absMagLimit, so a wide radius remains cheap.
+    void getNearStars(const UniversalCoord& position,
+                      float maxDistance,
+                      float absMagLimit,
+                      std::vector<const Star*>& stars) const;
+
     void markObject(const Selection&,
                     const celestia::MarkerRepresentation& rep,
                     int priority,
