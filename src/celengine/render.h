@@ -848,7 +848,12 @@ class Renderer
     // merged into every body's light source list so a visually dominant
     // star illuminates nearby bodies even if it isn't their primary.
     std::vector<const Star*> brightStarCandidates;
-    float BrightStarThresholdMag{ -12.7f };
+    // Physical threshold: a supplementary star must deliver at least
+    // this many solar constants of irradiance at the observer to be
+    // considered an additional light source. 2.5e-6 is the full Moon's
+    // contribution to Earth's surface relative to noon sunlight -- the
+    // point where a second light source is just visible on the ground.
+    float BrightStarThresholdIrradiance{ 2.5e-6f };
 
     // Size of a texture used in shadow mapping
     unsigned m_shadowMapSize { 0 };
