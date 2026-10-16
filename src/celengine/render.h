@@ -13,8 +13,6 @@
 #include <array>
 #include <list>
 #include <memory>
-#include "proceduralgalaxies.h"
-#include <unordered_map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -25,6 +23,7 @@
 #include <celengine/body.h>
 #include <celengine/lightenv.h>
 #include <celengine/meshmanager.h>
+#include <celengine/proceduralgalaxies.h>
 #include <celengine/universe.h>
 #include <celengine/selection.h>
 #include <celengine/shadermanager.h>
