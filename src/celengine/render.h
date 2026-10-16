@@ -23,7 +23,6 @@
 #include <celengine/body.h>
 #include <celengine/lightenv.h>
 #include <celengine/meshmanager.h>
-#include <celengine/proceduralgalaxies.h>
 #include <celengine/universe.h>
 #include <celengine/selection.h>
 #include <celengine/shadermanager.h>
@@ -78,7 +77,6 @@ struct Matrices
     const Eigen::Matrix4f *modelview;
 };
 
-
 struct LightSource
 {
     Eigen::Vector3d position;
@@ -87,7 +85,6 @@ struct LightSource
     float radius;
 };
 
-
 struct SecondaryIlluminator
 {
     const Body*     body;
@@ -95,7 +92,6 @@ struct SecondaryIlluminator
     float           radius;           // radius in km
     float           reflectedIrradiance;  // albedo times total irradiance from direct sources
 };
-
 
 enum class RenderMode
 {
@@ -498,7 +494,6 @@ class Renderer
                          double now);
     int buildDepthPartitions();
 
-
     void addRenderListEntries(RenderListEntry& rle,
                               Body& body,
                               bool isLabeled);
@@ -846,13 +841,6 @@ class Renderer
 
     // Size of a texture used in shadow mapping
     unsigned m_shadowMapSize { 0 };
-
-    // Per-frame procedural galaxy cache. Cells generated on demand and
-    // evicted as the observer moves so memory stays bounded.
-    std::unordered_map<celestia::engine::procedural::CellCoord,
-                       celestia::engine::procedural::CellContent,
-                       celestia::engine::procedural::CellCoordHash>
-        proceduralGalaxyCache;
     std::unique_ptr<FramebufferObject> m_shadowFBO;
 
     std::unique_ptr<celestia::gl::VertexObject> m_markerVO;
@@ -910,7 +898,6 @@ class Renderer
     friend class celestia::render::AtmosphereRenderer;
     friend class PointStarRenderer;
 };
-
 
 class RendererWatcher
 {
