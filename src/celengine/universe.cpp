@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <utility>
 
@@ -84,18 +85,22 @@ ClosestStarFinder::process(const Star& star, float distance, float /*unused*/)
 class NearStarFinder : public engine::StarHandler
 {
 public:
-    NearStarFinder(float _maxDistance, std::vector<const Star*>& nearStars);
+    NearStarFinder(float _maxDistance, std::vector<const Star*>& nearStars,
+                   float absMagLimit = std::numeric_limits<float>::infinity());
     ~NearStarFinder() = default;
     void process(const Star& star, float distance, float appMag);
 
 private:
     float maxDistance;
+    float absMagLimit;
     std::vector<const Star*>& nearStars;
 };
 
 NearStarFinder::NearStarFinder(float _maxDistance,
-                               std::vector<const Star*>& _nearStars) :
+                               std::vector<const Star*>& _nearStars,
+                               float _absMagLimit) :
     maxDistance(_maxDistance),
+    absMagLimit(_absMagLimit),
     nearStars(_nearStars)
 {
 }
@@ -103,7 +108,7 @@ NearStarFinder::NearStarFinder(float _maxDistance,
 void
 NearStarFinder::process(const Star& star, float distance, float /*unused*/)
 {
-    if (distance < maxDistance)
+    if (distance < maxDistance && star.getAbsoluteMagnitude() <= absMagLimit)
         nearStars.push_back(&star);
 }
 
@@ -1185,6 +1190,17 @@ Universe::getNearStars(const UniversalCoord& position,
 {
     Eigen::Vector3f pos = position.toLy().cast<float>();
     NearStarFinder finder(maxDistance, nearStars);
+    starCatalog->findCloseStars(finder, pos, maxDistance);
+}
+
+void
+Universe::getNearStars(const UniversalCoord& position,
+                       float maxDistance,
+                       float absMagLimit,
+                       std::vector<const Star*>& nearStars) const
+{
+    Eigen::Vector3f pos = position.toLy().cast<float>();
+    NearStarFinder finder(maxDistance, nearStars, absMagLimit);
     starCatalog->findCloseStars(finder, pos, maxDistance);
 }
 
