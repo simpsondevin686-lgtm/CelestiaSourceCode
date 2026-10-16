@@ -13,6 +13,8 @@
 #include <array>
 #include <list>
 #include <memory>
+#include "proceduralgalaxies.h"
+#include <unordered_map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -845,6 +847,13 @@ class Renderer
 
     // Size of a texture used in shadow mapping
     unsigned m_shadowMapSize { 0 };
+
+    // Per-frame procedural galaxy cache. Cells generated on demand and
+    // evicted as the observer moves so memory stays bounded.
+    std::unordered_map<celestia::engine::procedural::CellCoord,
+                       celestia::engine::procedural::CellContent,
+                       celestia::engine::procedural::CellCoordHash>
+        proceduralGalaxyCache;
     std::unique_ptr<FramebufferObject> m_shadowFBO;
 
     std::unique_ptr<celestia::gl::VertexObject> m_markerVO;
