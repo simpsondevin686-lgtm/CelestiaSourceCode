@@ -108,5 +108,5 @@ public:
     // actually illuminates nearby bodies, even if it isn't the body's own
     // primary.
     std::vector<const Star*>* brightStarCandidates  { nullptr };
-    float                     brightStarThresholdMag{ -12.7f };
+    float                     brightStarThresholdIrradiance{ 2.5e-6f };
 };
