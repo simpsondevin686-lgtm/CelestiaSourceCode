@@ -476,7 +476,8 @@ class Renderer
     void buildNearSystemsLists(const Universe &universe,
                                const Observer &observer,
                                const celestia::math::InfiniteFrustum &xfrustum,
-                               double jd);
+                               double jd,
+                               const Selection &sel);
 
     void buildRenderLists(const Eigen::Vector3d& astrocentricObserverPos,
                           const celestia::math::InfiniteFrustum& viewFrustum,
