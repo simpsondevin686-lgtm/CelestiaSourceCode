@@ -2261,7 +2261,7 @@ buildAtmosphereFragmentShader(const ShaderProperties& props)
         source += AtmosphericEffects(props, 0);
 
         source += "vec3 color = vec3(0.0);\n";
-        for (unsigned int i = 0; i < std::min(static_cast<unsigned int>(props.nLights), 1u); ++i)
+        for (unsigned int i = 0; i < props.nLights; ++i)
             source += "    color += " + ScatteredColor(i) + ";\n";
         source += "    fragColor = vec4(color, 0.0);\n";
         if (dualSource)
