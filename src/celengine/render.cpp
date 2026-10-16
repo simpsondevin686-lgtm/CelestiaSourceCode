@@ -3025,11 +3025,21 @@ bool Renderer::testEclipse(const Body& receiver,
                     const float path_m = 0.5f *
                         std::sqrt(std::numbers::pi_v<float> * R_m * H_m * 0.5f);
 
-                    Eigen::Vector3f tau = atm->rayleighCoeff * path_m;
+                    // Total optical depth = Rayleigh scattering + absorption.
+                    // Rayleigh alone always produces red-enriched transmitted
+                    // light (it prefers short wavelengths). Absorption tells
+                    // a different story: gases like methane in Neptune's
+                    // atmosphere absorb red more than blue, so the full
+                    // optical depth can invert the hue. Whether a given
+                    // body's eclipse is red, blue, or grey falls out of
+                    // the sum — the code does not presume a color.
+                    Eigen::Vector3f tau = (atm->rayleighCoeff + atm->absorptionCoeff) * path_m;
                     Eigen::Vector3f T;
                     for (int i = 0; i < 3; ++i)
                         T[i] = std::exp(-tau[i]);
 
+                    // Normalize to the brightest surviving channel so the
+                    // result is a pure chromaticity.
                     const float tMax = T.maxCoeff();
                     if (tMax > 0.0f)
                         shadow.refractedColor = T / tMax;
