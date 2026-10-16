@@ -97,6 +97,13 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
     if (distance > distanceLimit)
         return;
 
+    // Collect visually dominant stars so the renderer can use them as
+    // supplementary light sources for every body in the scene. A star
+    // this bright would obviously affect the ambient illumination, but
+    // Celestia's per-system light list only knows about the primary star.
+    if (brightStarCandidates != nullptr && appMag < brightStarThresholdMag)
+        brightStarCandidates->push_back(&star);
+
     Vector3f starPos = star.getPosition();
 
     // Calculate the difference at double precision *before* converting to float.
