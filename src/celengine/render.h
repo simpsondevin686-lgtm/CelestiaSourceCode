@@ -843,6 +843,13 @@ class Renderer
     // visibility culling of solar systems.
     float SolarSystemMaxDistance{ 1.0f };
 
+    // Stars collected during the point-star pass whose apparent magnitude
+    // exceeds (is brighter than) BrightStarThresholdMag. Their light is
+    // merged into every body's light source list so a visually dominant
+    // star illuminates nearby bodies even if it isn't their primary.
+    std::vector<const Star*> brightStarCandidates;
+    float BrightStarThresholdMag{ -12.7f };
+
     // Size of a texture used in shadow mapping
     unsigned m_shadowMapSize { 0 };
     std::unique_ptr<FramebufferObject> m_shadowFBO;
