@@ -843,7 +843,6 @@ class Renderer
     // visibility culling of solar systems.
     float SolarSystemMaxDistance{ 1.0f };
 
-
     // Size of a texture used in shadow mapping
     unsigned m_shadowMapSize { 0 };
     std::unique_ptr<FramebufferObject> m_shadowFBO;
