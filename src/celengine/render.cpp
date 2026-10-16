@@ -123,6 +123,13 @@ static constexpr float PixelOffset = 0.125f;
 // closer than MinNearPlaneDistance, and the far plane is set so that far/near
 // will not exceed MaxFarNearRatio.
 static constexpr float MinNearPlaneDistance = 0.0001f; // km
+
+// Eclipse refraction strength. The chromaticity of the refracted light is
+// derived entirely from the casting body's Rayleigh and absorption
+// coefficients (computed in testEclipse); this value is a perceptual gain
+// only. It scales how visible the reddening or blue-shifting is during
+// totality. Typical eclipses look right in the 0.02-0.10 range.
+static constexpr float EclipseRefractionGain = 0.05f;
 static constexpr float MaxFarNearRatio      = 2000000.0f;
 
 static constexpr float MinRelativeOccluderRadius = 0.005f;
@@ -3245,6 +3252,27 @@ void Renderer::setupPlanetLighting(Body& body, // NOSONAR(cpp:S107,cpp:S3776)
                 for (unsigned int li = 0; li < lights.nLights; ++li)
                     testEclipse(body, *testBody, shadowReceiverRadius,
                                 lights, li, now);
+            }
+        }
+
+        // Eclipse refraction. When a shadow caster has an atmosphere,
+        // grazing sunlight is bent into the umbra and arrives tinted by
+        // whatever the atmosphere scattered or absorbed along the way.
+        // Rayleigh alone gives copper-red; a methane-rich atmosphere
+        // like Neptune's can invert that into blue. The chromaticity
+        // comes from the caster's coefficients in testEclipse; we add
+        // it here as ambient so it multiplies over the receiver's
+        // texture instead of replacing it. Airless casters contribute
+        // nothing because their refractedColor stays at (0,0,0).
+        for (unsigned int li = 0; li < lights.nLights; ++li)
+        {
+            if (lights.shadows[li] == nullptr)
+                continue;
+
+            for (const EclipseShadow& s : *lights.shadows[li])
+            {
+                if (s.refractedColor.minCoeff() > 0.0f)
+                    lights.ambientColor += s.refractedColor * EclipseRefractionGain;
             }
         }
 
