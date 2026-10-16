@@ -32,11 +32,19 @@
 namespace celestia::engine::procedural
 {
 
+// Cell size controls how many cells the render loop iterates:
+// at 25 Mly per cell and 300 Mly outer radius, the loop covers
+// (2*ceil(300/25)+1)^3 = 25^3 = 15625 cells max, most rejected
+// as outside the inner/outer shell. With 1 Mly cells the loop
+// would run over a billion iterations and hard-freeze the game.
+//
+// Density is set so a full cache (a few hundred active cells)
+// holds a few tens of thousands of galaxies, not millions.
 constexpr double InnerRadiusMly   = 10.0;
-constexpr double OuterRadiusMly   = 500.0;
-constexpr double CellSizeMly      = 1.0;
-constexpr double DensityPerMly3   = 0.3;
-constexpr std::size_t MaxCachedCells = 4096;
+constexpr double OuterRadiusMly   = 300.0;
+constexpr double CellSizeMly      = 25.0;
+constexpr double DensityPerMly3   = 0.01;
+constexpr std::size_t MaxCachedCells = 512;
 
 struct CellCoord
 {
