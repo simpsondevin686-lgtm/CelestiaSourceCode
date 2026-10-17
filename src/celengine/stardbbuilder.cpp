@@ -13,8 +13,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cctype>
-#include <cstdio>
 #include <cmath>
 #include <cstdint>
 #include <istream>
@@ -312,52 +310,6 @@ parseStcHeader(util::Tokenizer& tokenizer, StarDatabaseBuilder::StcHeader& heade
     return true;
 }
 
-static double
-gregorianToJulian(int year, int month, int day, int hour, int minute)
-{
-    const int a = (14 - month) / 12;
-    const int y = year + 4800 - a;
-    const int m = month + 12 * a - 3;
-    const long jdn = day + (153 * m + 2) / 5 + 365L * y + y / 4 - y / 100 + y / 400 - 32045;
-    return static_cast<double>(jdn) - 0.5
-         + static_cast<double>(hour) / 24.0
-         + static_cast<double>(minute) / 1440.0;
-}
-
-static bool
-parseStcDateTime(const std::string& str, double& jd)
-{
-    int month = 0, day = 0, year = 0, hour = 0, minute = 0;
-    char ampm[4] = {};
-    if (std::sscanf(str.c_str(), "%d/%d/%d %d:%d%3s",
-                    &month, &day, &year, &hour, &minute, ampm) != 6)
-        return false;
-    if (month < 1 || month > 12 || day < 1 || day > 31 ||
-        hour < 1 || hour > 12 || minute < 0 || minute > 59)
-        return false;
-    if (year >= 0 && year < 100)
-        year += 2000;
-    for (char* c = ampm; *c != '\0'; ++c)
-        *c = static_cast<char>(std::toupper(static_cast<unsigned char>(*c)));
-    const std::string ap(ampm);
-    if (ap == "AM")
-    {
-        if (hour == 12)
-            hour = 0;
-    }
-    else if (ap == "PM")
-    {
-        if (hour != 12)
-            hour += 12;
-    }
-    else
-    {
-        return false;
-    }
-    jd = gregorianToJulian(year, month, day, hour, minute);
-    return true;
-}
-
 bool
 checkSpectralType(const StarDatabaseBuilder::StcHeader& header,
                   const AssociativeArray& starData,
@@ -588,48 +540,6 @@ applyTemperatureBoloCorrection(const StarDatabaseBuilder::StcHeader& header,
             stcWarn(header, _("Temperature value must be greater than zero"));
         }
     }
-}
-
-static void
-applyDisappearWindow(const StarDatabaseBuilder::StcHeader& header,
-                     const AssociativeArray& starData,
-                     boost::intrusive_ptr<StarDetails>& details)
-{
-    const std::string* disappearStr = starData.getString("DisappearDate");
-    const std::string* reappearStr  = starData.getString("ReappearDate");
-
-    if (disappearStr == nullptr && reappearStr == nullptr)
-        return;
-
-    if (disappearStr == nullptr)
-    {
-        stcWarn(header, _("ReappearDate without DisappearDate ignored"));
-        return;
-    }
-
-    double disappearJd = 0.0;
-    if (!parseStcDateTime(*disappearStr, disappearJd))
-    {
-        stcError(header, _("invalid DisappearDate"));
-        return;
-    }
-
-    double reappearJd = 0.0;
-    if (reappearStr != nullptr)
-    {
-        if (!parseStcDateTime(*reappearStr, reappearJd))
-        {
-            stcError(header, _("invalid ReappearDate"));
-            return;
-        }
-        if (reappearJd <= disappearJd)
-        {
-            stcWarn(header, _("ReappearDate is not after DisappearDate; ignoring both"));
-            return;
-        }
-    }
-
-    details->setDisappearWindow(disappearJd, reappearJd);
 }
 
 void
@@ -997,7 +907,6 @@ StarDatabaseBuilder::createOrUpdateStar(const StcHeader& header,
         StarDetails::setOrbit(star->details, orbit);
 
     applyCustomDetails(header, starData, star->details, *geometryPaths, *texturePaths);
-    applyDisappearWindow(header, starData, star->details);
     return true;
 }
 
