@@ -76,10 +76,10 @@ public:
     float getBolometricCorrection() const;
     Star* getOrbitBarycenter() const;
     bool getVisibility() const;
-    bool isDisappearedAt(double t) const;
     const std::shared_ptr<const celestia::ephem::RotationModel>& getRotationModel() const;
     Eigen::Vector3f getEllipsoidSemiAxes() const;
     bool isBarycenter() const;
+    bool isDisappearedAt(double t) const;
 
     static void setRadius(boost::intrusive_ptr<StarDetails>&, float);
     static void setTemperature(boost::intrusive_ptr<StarDetails>&, float);
