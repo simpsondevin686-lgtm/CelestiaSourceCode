@@ -180,9 +180,6 @@ computeLightAmount(const Star& star,
                    const UniversalCoord& observerPos,
                    double jd)
 {
-    if (star.isDisappearedAt(jd))
-        return 0.0;
-
     const double starRadiusKm = static_cast<double>(star.getRadius());
     if (starRadiusKm <= 0.0)
         return 1.0;
