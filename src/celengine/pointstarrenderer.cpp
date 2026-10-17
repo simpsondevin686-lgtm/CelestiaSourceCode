@@ -97,9 +97,6 @@ void PointStarRenderer::process(const Star& star, float distance, float appMag)
     if (distance > distanceLimit)
         return;
 
-    if (star.isDisappearedAt(observer->getTime()))
-        return;
-
     Vector3f starPos = star.getPosition();
 
     // Calculate the difference at double precision *before* converting to float.
