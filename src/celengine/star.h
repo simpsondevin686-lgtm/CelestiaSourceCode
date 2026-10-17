@@ -66,6 +66,8 @@ public:
 
     float getRadius() const;
     float getTemperature() const;
+    void setDisappearWindow(double d, double r);
+    bool isDisappearedAt(double t) const;
     celestia::engine::GeometryHandle getGeometry() const;
     celestia::util::TextureHandle getTexture() const;
     const celestia::ephem::Orbit* getOrbit() const;
@@ -74,6 +76,7 @@ public:
     float getBolometricCorrection() const;
     Star* getOrbitBarycenter() const;
     bool getVisibility() const;
+    bool isDisappearedAt(double t) const;
     const std::shared_ptr<const celestia::ephem::RotationModel>& getRotationModel() const;
     Eigen::Vector3f getEllipsoidSemiAxes() const;
     bool isBarycenter() const;
@@ -150,10 +153,32 @@ private:
     std::unique_ptr<std::vector<Star*>> orbitingStars{ nullptr };
     bool isShared{ true };
 
+    double disappearTime{ 0.0 };
+    double reappearTime{ 0.0 };
+
     friend class StarDetailsManager;
 };
 
 ENUM_CLASS_BITWISE_OPS(StarDetails::Knowledge);
+
+inline void
+StarDetails::setDisappearWindow(double d, double r)
+{
+    disappearTime = d;
+    reappearTime = r;
+}
+
+inline bool
+StarDetails::isDisappearedAt(double t) const
+{
+    if (disappearTime <= 0.0)
+        return false;
+    if (t < disappearTime)
+        return false;
+    if (reappearTime <= 0.0)
+        return true;
+    return t < reappearTime;
+}
 
 inline float
 StarDetails::getRadius() const
@@ -309,6 +334,12 @@ private:
 
     friend class StarDatabaseBuilder;
 };
+
+inline bool
+Star::isDisappearedAt(double t) const
+{
+    return details != nullptr && details->isDisappearedAt(t);
+}
 
 inline AstroCatalog::IndexNumber
 Star::getIndex() const
