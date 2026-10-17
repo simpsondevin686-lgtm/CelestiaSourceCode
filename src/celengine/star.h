@@ -67,6 +67,7 @@ public:
     float getRadius() const;
     float getTemperature() const;
     void setDisappearWindow(double d, double r);
+    bool isDisappearedAt(double t) const;
     celestia::engine::GeometryHandle getGeometry() const;
     celestia::util::TextureHandle getTexture() const;
     const celestia::ephem::Orbit* getOrbit() const;
