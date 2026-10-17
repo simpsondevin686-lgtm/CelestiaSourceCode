@@ -1314,6 +1314,9 @@ setupLightSources(const vector<const Star*>& nearStars,
 
     for (const auto star : nearStars)
     {
+        if (star->isDisappearedAt(t))
+            continue;
+
         if (star->getVisibility())
         {
             Vector3d v = star->getPosition(t).offsetFromKm(observerPos);
