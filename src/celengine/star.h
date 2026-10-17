@@ -67,7 +67,6 @@ public:
     float getRadius() const;
     float getTemperature() const;
     void setDisappearWindow(double d, double r);
-    bool isDisappearedAt(double t) const;
     celestia::engine::GeometryHandle getGeometry() const;
     celestia::util::TextureHandle getTexture() const;
     const celestia::ephem::Orbit* getOrbit() const;
@@ -79,7 +78,6 @@ public:
     const std::shared_ptr<const celestia::ephem::RotationModel>& getRotationModel() const;
     Eigen::Vector3f getEllipsoidSemiAxes() const;
     bool isBarycenter() const;
-    bool isDisappearedAt(double t) const;
 
     static void setRadius(boost::intrusive_ptr<StarDetails>&, float);
     static void setTemperature(boost::intrusive_ptr<StarDetails>&, float);
@@ -324,6 +322,7 @@ public:
     bool isBarycenter() const;
 
     celestia::util::array_view<Star*> getOrbitingStars() const;
+    bool isDisappearedAt(double t) const;
 
 private:
     AstroCatalog::IndexNumber indexNumber{ AstroCatalog::InvalidIndex };
