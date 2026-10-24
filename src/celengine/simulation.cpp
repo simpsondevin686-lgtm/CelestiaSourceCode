@@ -105,6 +105,44 @@ void Simulation::update(double dt)
 
     for (const auto observer : observers)
     {
+        if (observer->getGravityEnabled() && observer->getGravityDelay() > 15.0)
+        {
+            Eigen::Vector3d totalAccel = Eigen::Vector3d::Zero();
+            auto obsPos = observer->getPosition();
+            const Star* nearestStar = nullptr;
+            const SolarSystem* nearestSys = nullptr;
+            double minDist = 1e12;
+            
+            for (const auto& [star, sys] : getUniverse()->getSolarSystemCatalog()) {
+                double dist = (star->getPosition().cast<double>() - obsPos.toLy()).norm();
+                if (dist < minDist) { minDist = dist; nearestStar = star; nearestSys = sys; }
+            }
+            
+            if (nearestStar) {
+                // Star Gravity
+                auto starPos = nearestStar->getPosition(observer->getTime());
+                auto offset = starPos.offsetFromKm(obsPos);
+                double dist = std::max(offset.norm(), static_cast<double>(nearestStar->getRadius()) + 10.0);
+                double mass = 1.989e30; // Default to 1 Solar Mass
+                double accelMag = 6.674e-20 * mass / (dist * dist);
+                totalAccel += -offset.normalized() * accelMag;
+                
+                // Planet/Moon/Asteroid Gravity
+                if (nearestSys) {
+                    for (const auto body : nearestSys->getBodies()) {
+                        if (body->getMass() <= 0.0) continue;
+                        auto bodyPos = body->getPosition(observer->getTime());
+                        auto bOffset = bodyPos.offsetFromKm(obsPos);
+                        double bDist = std::max(bOffset.norm(), static_cast<double>(body->getRadius()) + 10.0);
+                        double bAccelMag = 6.674e-20 * body->getMass() / (bDist * bDist);
+                        totalAccel += -bOffset.normalized() * bAccelMag;
+                    }
+                }
+            }
+            observer->setGravityAccel(totalAccel);
+        } else {
+            observer->setGravityAccel(Eigen::Vector3d::Zero());
+        }
         observer->update(dt, timeScale);
     }
 
