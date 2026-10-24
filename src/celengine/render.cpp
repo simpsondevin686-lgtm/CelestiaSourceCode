@@ -1294,7 +1294,7 @@ setupLightSources(const vector<const Star*>& nearStars,
             LightSource ls;
             ls.position = v;
             ls.luminosity = star->getLuminosity();
-            ls.radius = star->getRadius(observer.getTime());
+            ls.radius = star->getRadius();
 
             float temp = star->getTemperature();
             if (temp <= DARK_POINT)
