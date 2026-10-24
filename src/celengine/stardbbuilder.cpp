@@ -587,6 +587,31 @@ applyCustomDetails(const StarDatabaseBuilder::StcHeader& header,
             stcWarn(header, _("SemiAxes must be greater than zero"));
     }
 
+
+    // Parse RadiusTimeline (array of hashes: { Time <jd> Radius <float> })
+    if (const Value* timelineVal = starData.getValue("RadiusTimeline"); timelineVal != nullptr)
+    {
+        if (const ValueArray* arr = timelineVal->getArray(); arr != nullptr)
+        {
+            for (const auto& item : *arr)
+            {
+                if (const AssociativeArray* entry = item.getHash(); entry != nullptr)
+                {
+                    auto time = entry->getNumber<double>("Time");
+                    auto rad  = entry->getNumber<float>("Radius");
+                    if (time.has_value() && rad.has_value())
+                    {
+                        details->radiusTimeline.push_back({*time, *rad});
+                    }
+                }
+            }
+            std::sort(details->radiusTimeline.begin(), details->radiusTimeline.end(),
+                      [](const StarDetails::RadiusKeyframe& a, const StarDetails::RadiusKeyframe& b) {
+                          return a.time < b.time;
+                      });
+        }
+    }
+
     if (auto radius = starData.getLength<float>("Radius"); radius.has_value())
     {
         if (!header.isStar)
