@@ -1302,6 +1302,9 @@ SolarSystemsBuilder::createBody(const std::string& name, //NOSONAR
     if (auto cometTailColor = planetData.getColor("TailColor"); cometTailColor.has_value())
         bodyFeaturesManager->setCometTailColor(body, *cometTailColor);
 
+    if (const std::string* tailWords = planetData.getString("TailWords"); tailWords != nullptr && !tailWords->empty())
+        bodyFeaturesManager->setCometTailWords(body, *tailWords);
+
     if (auto clickable = planetData.getBoolean("Clickable"); clickable.has_value())
         body->setClickable(*clickable);
 
