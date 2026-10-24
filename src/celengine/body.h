@@ -192,6 +192,7 @@ enum class BodyFeatures : std::uint8_t
     ReferenceMarks    = 0x10,
     OrbitColor        = 0x20,
     CometTailColor    = 0x40,
+    CometTailWords    = 0x80,
 };
 
 ENUM_CLASS_BITWISE_OPS(BodyFeatures);
@@ -496,6 +497,10 @@ public:
     void setCometTailColor(Body*, const Color&);
     void unsetCometTailColor(Body*);
 
+    const std::string& getCometTailWords(const Body*) const;
+    void setCometTailWords(Body*, const std::string&);
+    void unsetCometTailWords(Body*);
+
     void removeFeatures(Body*);
 
 private:
@@ -507,6 +512,7 @@ private:
     std::unordered_map<const Body*, BodyLocations> locations;
     std::unordered_map<const Body*, Color> orbitColors;
     std::unordered_map<const Body*, Color> cometTailColors;
+    std::unordered_map<const Body*, std::string> cometTailWords;
     std::unordered_multimap<const Body*, std::unique_ptr<ReferenceMark>> referenceMarks;
 };
 
