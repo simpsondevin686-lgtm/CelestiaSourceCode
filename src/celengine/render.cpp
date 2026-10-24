@@ -1294,7 +1294,7 @@ setupLightSources(const vector<const Star*>& nearStars,
             LightSource ls;
             ls.position = v;
             ls.luminosity = star->getLuminosity();
-            ls.radius = star->getRadius();
+            ls.radius = star->getRadius(now);
 
             float temp = star->getTemperature();
             if (temp <= DARK_POINT)
@@ -3483,7 +3483,7 @@ void Renderer::renderStar(const Star& star,
         return;
 
     Color color = starColors.lookupColor(star.getTemperature());
-    float radius = star.getRadius();
+    float radius = star.getRadius(now);
     float discSizeInPixels = radius / (distance * pixelSize);
 
     if (discSizeInPixels > 1)
@@ -3503,7 +3503,7 @@ void Renderer::renderStar(const Star& star,
         rp.isStar = true;
         rp.surface = &surface;
         rp.rings = nullptr;
-        rp.radius = star.getRadius();
+        rp.radius = star.getRadius(now);
         rp.semiAxes = star.getEllipsoidSemiAxes();
         rp.geometry = star.getGeometry();
 
@@ -3536,7 +3536,7 @@ void Renderer::renderStar(const Star& star,
                      rp, LightingState(), m);
     }
 
-    renderObjectAsPoint(PointObjectInfo{pos, distance, star.getRadius()},
+    renderObjectAsPoint(PointObjectInfo{pos, distance, star.getRadius(now)},
                         appMag,
                         discSizeInPixels,
                         color,
