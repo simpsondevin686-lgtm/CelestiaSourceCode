@@ -154,6 +154,10 @@ public:
 
     Eigen::Vector3d getVelocity() const;
     void            setVelocity(const Eigen::Vector3d&);
+    void setGravityAccel(const Eigen::Vector3d& a) { gravityAccel = a; }
+    bool getGravityEnabled() const { return gravityEnabled; }
+    void setGravityEnabled(bool b) { gravityEnabled = b; }
+    double getGravityDelay() const { return gravityDelayTimer; }
     Eigen::Vector3d getAngularVelocity() const;
     void            setAngularVelocity(const Eigen::Vector3d&);
     Eigen::Vector3d getInputAngularVelocity() const;
@@ -322,6 +326,9 @@ private:
 
     // Position, orientation, and velocity in the observer's reference frame
     UniversalCoord      position{ 0.0, 0.0, 0.0 };
+    bool gravityEnabled{ true };
+    double gravityDelayTimer{ 0.0 };
+    Eigen::Vector3d gravityAccel{ Eigen::Vector3d::Zero() };
     Eigen::Quaterniond  originalOrientation{ Eigen::Quaterniond::Identity() };
     Eigen::Quaterniond  transformedOrientation{ Eigen::Quaterniond::Identity() };
     // Flexible, full 6DoF observer pose, e.g., AR/VR headset
