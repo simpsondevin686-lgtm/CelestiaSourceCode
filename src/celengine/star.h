@@ -65,6 +65,7 @@ public:
     void mergeFromStandard(const StarDetails* standardDetails);
 
     float getRadius() const;
+    float getRadius(double t) const;
     float getTemperature() const;
     celestia::engine::GeometryHandle getGeometry() const;
     celestia::util::TextureHandle getTexture() const;
@@ -127,6 +128,12 @@ private:
     }
 
     std::atomic_uint32_t refCount{ 1 };
+
+    struct RadiusKeyframe {
+        double time;
+        float radius;
+    };
+    std::vector<RadiusKeyframe> radiusTimeline;
 
     float radius{ 0.0f };
     float temperature{ 0.0f };
@@ -284,6 +291,7 @@ public:
 
     // Accessor methods that delegate to StarDetails
     float getRadius() const;
+    float getRadius(double t) const;
     float getTemperature() const;
     const char* getSpectralType() const;
     float getBolometricMagnitude() const;
