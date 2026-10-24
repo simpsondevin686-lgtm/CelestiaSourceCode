@@ -421,7 +421,7 @@ CometRenderer::renderTextTail(const Body &body,
 
     for (int c = 0; c < n && !overflow; c++)
     {
-        char ch = words[static_cast<std::size_t>(c)];
+        char ch = words[static_cast<std::size_t>(n - 1 - c)];
         if (ch >= 'a' && ch <= 'z')
             ch = static_cast<char>(ch - 'a' + 'A');
         int glyphIdx = (ch >= 0x20 && ch < 0x60) ? (ch - 0x20) : ('?' - 0x20);
@@ -443,7 +443,7 @@ CometRenderer::renderTextTail(const Body &body,
                     break;
                 }
 
-                float lx = (static_cast<float>(col) - 2.0f) * pxW;
+                float lx = -(static_cast<float>(col) - 2.0f) * pxW;
                 float ly = (static_cast<float>(3 - row)) * pxH;
                 Eigen::Vector3f qc = charCenter + sunDirSky * lx + upSky * ly;
 
