@@ -3483,7 +3483,7 @@ void Renderer::renderStar(const Star& star,
         return;
 
     Color color = starColors.lookupColor(star.getTemperature());
-    float radius = star.getRadius(observer.getTime());
+    float radius = star.getRadius();
     float discSizeInPixels = radius / (distance * pixelSize);
 
     if (discSizeInPixels > 1)
@@ -3503,7 +3503,7 @@ void Renderer::renderStar(const Star& star,
         rp.isStar = true;
         rp.surface = &surface;
         rp.rings = nullptr;
-        rp.radius = star.getRadius(observer.getTime());
+        rp.radius = star.getRadius();
         rp.semiAxes = star.getEllipsoidSemiAxes();
         rp.geometry = star.getGeometry();
 
@@ -3536,7 +3536,7 @@ void Renderer::renderStar(const Star& star,
                      rp, LightingState(), m);
     }
 
-    renderObjectAsPoint(PointObjectInfo{pos, distance, star.getRadius(observer.getTime())},
+    renderObjectAsPoint(PointObjectInfo{pos, distance, star.getRadius()},
                         appMag,
                         discSizeInPixels,
                         color,
