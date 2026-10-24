@@ -11,6 +11,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include <Eigen/Core>
 
@@ -46,6 +47,15 @@ public:
     bool initGL();
 
 private:
+    void renderTextTail(const Body &body,
+                        const Eigen::Vector3f &pos,
+                        const Eigen::Vector3f &sunDir,
+                        float dustTailLength,
+                        float fadeFactor,
+                        const Matrices &m,
+                        std::string_view words);
+
+private:
 
     struct CometTailVertex
     {
@@ -63,6 +73,7 @@ private:
     gl::Buffer::SharedPtr              m_bo;
     gl::Buffer::SharedPtr              m_ibo;
     gl::VertexObject                   m_vo;
+    gl::VertexObject                   m_voText;
 };
 
 } // namespace celestia::render
