@@ -651,7 +651,6 @@ void
 Observer::update(double dt, double timeScale)
 {
     realTime += dt;
-    gravityDelayTimer += dt;
     simTime += (dt / 86400.0) * timeScale;
 
     simTime = std::clamp(simTime, minimumSimTime, maximumSimTime);
@@ -697,25 +696,8 @@ Observer::update(double dt, double timeScale)
         setVelocity(v);
     }
 
-    // Apply gravity if enabled and delay has passed
-    if (gravityEnabled && gravityAccel.norm() > 0.0 && observerMode != ObserverMode::Travelling && gravityDelayTimer > 15.0)
-    {
-        if (observerMode != ObserverMode::Free)
-            observerMode = ObserverMode::Free;
-        
-        double simTime = dt * timeScale;
-        int substeps = std::clamp(static_cast<int>(std::abs(timeScale) / 10.0), 1, 20);
-        double subDt = simTime / substeps;
-        for (int i = 0; i < substeps; ++i)
-        {
-            setVelocity(getVelocity() + gravityAccel * subDt);
-            position = position.offsetKm(getVelocity() * subDt);
-        }
-    }
-    else
-    {
-        position = position.offsetKm(getVelocity() * dt);
-    }
+    // Update the position
+    position = position.offsetKm(getVelocity() * dt);
 
     if (observerMode == ObserverMode::Free)
     {
