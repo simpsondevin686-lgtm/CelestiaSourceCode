@@ -598,7 +598,7 @@ applyCustomDetails(const StarDatabaseBuilder::StcHeader& header,
                 if (const AssociativeArray* entry = item.getHash(); entry != nullptr)
                 {
                     auto time = entry->getNumber<double>("Time");
-                    auto rad  = entry->getNumber<float>("Radius");
+                    auto rad  = entry->getLength<float>("Radius");
                     if (time.has_value() && rad.has_value())
                     {
                         details->radiusTimeline.push_back({*time, *rad});
