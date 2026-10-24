@@ -1134,6 +1134,32 @@ Star::getVelocity(double t) const
 
 // Return the radius of the star in kilometers
 float
+Star::getRadius(double t) const
+{
+    if (details->radiusTimeline.empty())
+        return getRadius();
+
+    const auto& tl = details->radiusTimeline;
+    if (t <= tl.front().time)
+        return tl.front().radius;
+    if (t >= tl.back().time)
+        return tl.back().radius;
+
+    for (size_t i = 0; i < tl.size() - 1; ++i)
+    {
+        if (t >= tl[i].time && t <= tl[i+1].time)
+        {
+            double span = tl[i+1].time - tl[i].time;
+            if (span <= 0.0)
+                return tl[i].radius;
+            float u = static_cast<float>((t - tl[i].time) / span);
+            return tl[i].radius + (tl[i+1].radius - tl[i].radius) * u;
+        }
+    }
+    return getRadius();
+}
+
+float
 Star::getRadius() const
 {
     if (util::is_set(details->knowledge, StarDetails::Knowledge::KnowRadius))
