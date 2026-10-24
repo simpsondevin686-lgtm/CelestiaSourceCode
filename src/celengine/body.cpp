@@ -101,6 +101,7 @@ Body::setDefaultProperties()
     clickable = true;
     manager->unsetOrbitColor(this);
     manager->unsetCometTailColor(this);
+    manager->unsetCometTailWords(this);
     orbitVisibility = UseClassVisibility;
     recomputeCullingRadius();
     cockpit = std::nullopt;
@@ -1524,6 +1525,31 @@ BodyFeaturesManager::unsetCometTailColor(Body* body)
     cometTailColors.erase(body);
     body->features &= ~BodyFeatures::CometTailColor;
 }
+const std::string&
+BodyFeaturesManager::getCometTailWords(const Body* body) const
+{
+    static const std::string empty;
+    if (!util::is_set(body->features, BodyFeatures::CometTailWords))
+        return empty;
+
+    auto it = cometTailWords.find(body);
+    assert(it != cometTailWords.end());
+    return it->second;
+}
+
+void
+BodyFeaturesManager::setCometTailWords(Body* body, const std::string& words)
+{
+    cometTailWords[body] = words;
+    body->features |= BodyFeatures::CometTailWords;
+}
+
+void
+BodyFeaturesManager::unsetCometTailWords(Body* body)
+{
+    cometTailWords.erase(body);
+    body->features &= ~BodyFeatures::CometTailWords;
+}
 
 void
 BodyFeaturesManager::removeFeatures(Body* body)
@@ -1535,6 +1561,7 @@ BodyFeaturesManager::removeFeatures(Body* body)
     locations.erase(body);
     orbitColors.erase(body);
     cometTailColors.erase(body);
+    cometTailWords.erase(body);
     body->features = BodyFeatures::None;
     // could recompute the culling radius here - not currently necessary
     // as we only use this when we're deleting the Body
