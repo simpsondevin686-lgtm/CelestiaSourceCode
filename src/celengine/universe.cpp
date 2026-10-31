@@ -832,7 +832,7 @@ Universe::pickStar(const UniversalCoord& origin,
                                   o,
                                   rotation.conjugate(),
                                   tolerance, 1.0f,
-                                  faintestMag);
+                                  faintestMag, when);
     if (picker.pickedStar != nullptr)
         return Selection(const_cast<Star*>(picker.pickedStar));
     else
