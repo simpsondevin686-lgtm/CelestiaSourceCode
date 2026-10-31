@@ -283,6 +283,78 @@ parseStcHeader(util::Tokenizer& tokenizer, StarDatabaseBuilder::StcHeader& heade
 }
 
 bool
+checkVisibilityDates(const StarDatabaseBuilder::StcHeader& header,
+                     const AssociativeArray& starData,
+                     boost::intrusive_ptr<StarDetails>& newDetails)
+{
+    auto parseDate = [](std::string_view s) -> std::optional<double>
+    {
+        auto getInt = [&](std::size_t pos, std::size_t len) -> int {
+            int v = 0;
+            for (std::size_t i = 0; i < len; ++i) {
+                char ch = s[pos + i];
+                if (ch < '0' || ch > '9') return -1;
+                v = v * 10 + (ch - '0');
+            }
+            return v;
+        };
+        auto toJD = [](int y, int mo, int d, int hh, int mm, int ss) -> double {
+            int yy = y, mmAdj = mo;
+            if (mmAdj <= 2) { yy -= 1; mmAdj += 12; }
+            int A = yy / 100;
+            int B = 2 - A + A / 4;
+            double dayFrac = d + (hh + (mm + ss / 60.0) / 60.0) / 24.0;
+            return std::floor(365.25 * (yy + 4716)) + std::floor(30.6001 * (mmAdj + 1))
+                 + dayFrac + B - 1524.5;
+        };
+
+        if (s.size() == 20 && s[4] == '-' && s[7] == '-' && s[10] == 'T'
+            && s[13] == ':' && s[16] == ':' && s[19] == 'Z')
+        {
+            int y = getInt(0, 4), mo = getInt(5, 2), d = getInt(8, 2);
+            int hh = getInt(11, 2), mm = getInt(14, 2), ss = getInt(17, 2);
+            if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > 31 || hh < 0 || hh > 23 || mm < 0 || mm > 59 || ss < 0 || ss > 60)
+                return std::nullopt;
+            return toJD(y, mo, d, hh, mm, ss);
+        }
+
+        if (s.size() == 16 && s[2] == '/' && s[5] == '/' && s[8] == 'T'
+            && s[11] == ':' && (s[14] == 'A' || s[14] == 'P') && s[15] == 'M')
+        {
+            int mo = getInt(0, 2), d = getInt(3, 2), yy = getInt(6, 2);
+            int hh = getInt(9, 2), mm = getInt(12, 2);
+            if (mo < 1 || mo > 12 || d < 1 || d > 31 || hh < 1 || hh > 12 || mm < 0 || mm > 59)
+                return std::nullopt;
+            int y = (yy > 50) ? 1900 + yy : 2000 + yy;
+            if (s[14] == 'P' && hh != 12) hh += 12;
+            if (s[14] == 'A' && hh == 12) hh = 0;
+            return toJD(y, mo, d, hh, mm, 0);
+        }
+        return std::nullopt;
+    };
+
+    const std::string* disStr = starData.getString("DisappearingDate");
+    if (disStr == nullptr) disStr = starData.getString("DissapearingDate");
+    const std::string* reStr = starData.getString("ReappearingDate");
+    if (disStr == nullptr && reStr == nullptr) return true;
+
+    if (newDetails == nullptr) {
+        stcWarn(header, _("DisappearingDate requires StarDetails (e.g., SpectralType); ignored"));
+        return true;
+    }
+
+    if (disStr != nullptr) {
+        if (auto jd = parseDate(*disStr); jd.has_value()) StarDetails::setDisappearingJD(newDetails, *jd);
+        else stcWarn(header, _("invalid DisappearingDate (use ISO 8601 or MM/DD/YYTHH:MMAM)"));
+    }
+    if (reStr != nullptr) {
+        if (auto jd = parseDate(*reStr); jd.has_value()) StarDetails::setReappearingJD(newDetails, *jd);
+        else stcWarn(header, _("invalid ReappearingDate (use ISO 8601 or MM/DD/YYTHH:MMAM)"));
+    }
+    return true;
+}
+
+bool
 checkSpectralType(const StarDatabaseBuilder::StcHeader& header,
                   const AssociativeArray& starData,
                   const Star* star,
@@ -840,6 +912,9 @@ StarDatabaseBuilder::createOrUpdateStar(const StcHeader& header,
 {
     boost::intrusive_ptr<StarDetails> newDetails = nullptr;
     if (!checkSpectralType(header, starData, star, newDetails))
+        return false;
+
+    if (!checkVisibilityDates(header, starData, newDetails))
         return false;
 
     std::optional<Eigen::Vector3f> position = std::nullopt;

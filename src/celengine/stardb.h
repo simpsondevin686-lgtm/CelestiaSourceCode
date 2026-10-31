@@ -62,7 +62,8 @@ public:
                           const Eigen::Quaternionf& obsOrientation,
                           float fovY,
                           float aspectRatio,
-                          float limitingMag) const;
+                          float limitingMag,
+                          double now) const;
 
     void findCloseStars(celestia::engine::StarHandler& starHandler,
                         const Eigen::Vector3f& obsPosition,

@@ -4507,7 +4507,8 @@ void Renderer::renderPointStars(const StarDatabase& starDB,
                             getCameraOrientationf(),
                             math::degToRad(fov),
                             getAspectRatio(),
-                            iterFaintestMag);
+                            iterFaintestMag,
+                            observer.getTime());
 
     if (starStyle == StarStyle::PointSpreadFunction)
     {

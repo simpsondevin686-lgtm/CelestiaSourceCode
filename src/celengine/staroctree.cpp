@@ -82,6 +82,9 @@ StarOctreeVisibleObjectsProcessor::checkNode(const StarOctree::PointType& center
 void
 StarOctreeVisibleObjectsProcessor::process(const Star& obj) const
 {
+    if (!obj.isVisibleAt(m_now))
+        return;
+
     if (obj.getAbsoluteMagnitude() > m_dimmest)
         return;
 

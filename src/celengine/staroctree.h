@@ -45,6 +45,7 @@ public:
                                       float);
 
     bool checkNode(const StarOctree::PointType&, float, float);
+    void setNow(double now) { m_now = now; }
     void process(const Star&) const;
 
 private:
@@ -55,6 +56,7 @@ private:
     float m_limitingFactor;
 
     float m_dimmest{ 1000.0f };
+    double m_now{ 0.0 };
 };
 
 class StarOctreeCloseObjectsProcessor

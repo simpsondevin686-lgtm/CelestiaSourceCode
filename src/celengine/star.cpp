@@ -909,6 +909,8 @@ StarDetails::clone() const
     newDetails->bolometricCorrection = bolometricCorrection;
     newDetails->knowledge = knowledge;
     newDetails->visible = visible;
+    newDetails->disappearingJD = disappearingJD;
+    newDetails->reappearingJD  = reappearingJD;
     newDetails->spectralType = spectralType;
     newDetails->texture = texture;
     newDetails->geometry = geometry;
@@ -1021,6 +1023,32 @@ StarDetails::setVisibility(boost::intrusive_ptr<StarDetails>& details, bool b)
 {
     unshare(details);
     details->visible = b;
+}
+
+void
+StarDetails::setDisappearingJD(boost::intrusive_ptr<StarDetails>& details, double jd)
+{
+    unshare(details);
+    details->disappearingJD = jd;
+}
+
+void
+StarDetails::setReappearingJD(boost::intrusive_ptr<StarDetails>& details, double jd)
+{
+    unshare(details);
+    details->reappearingJD = jd;
+}
+
+bool
+StarDetails::isVisibleAt(double jd) const
+{
+    if (!visible) return false;
+    const bool hasDis = disappearingJD >= 0.0;
+    const bool hasRe  = reappearingJD  >= 0.0;
+    if (hasDis && hasRe) return !(jd >= disappearingJD && jd < reappearingJD);
+    if (hasDis) return jd < disappearingJD;
+    if (hasRe) return jd >= reappearingJD;
+    return true;
 }
 
 void
