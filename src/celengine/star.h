@@ -73,7 +73,6 @@ public:
     const char* getSpectralType() const;
     float getBolometricCorrection() const;
     Star* getOrbitBarycenter() const;
-    bool isVisibleAt(double jd) const;
     bool getVisibility() const;
     bool isVisibleAt(double jd) const;
     double getDisappearingJD() const { return disappearingJD; }
@@ -301,6 +300,7 @@ public:
     float getOrbitalRadius() const;
     Star* getOrbitBarycenter() const;
     bool getVisibility() const;
+    bool isVisibleAt(double jd) const;
     const celestia::ephem::RotationModel* getRotationModel() const;
     Eigen::Vector3f getEllipsoidSemiAxes() const;
     bool hasCorona() const;
