@@ -9,6 +9,7 @@
 // of the License, or (at your option) any later version.
 
 #include "star.h"
+#include <algorithm>
 
 #include <algorithm>
 #include <cassert>
@@ -909,8 +910,7 @@ StarDetails::clone() const
     newDetails->bolometricCorrection = bolometricCorrection;
     newDetails->knowledge = knowledge;
     newDetails->visible = visible;
-    newDetails->disappearingJD = disappearingJD;
-    newDetails->reappearingJD  = reappearingJD;
+    newDetails->visibilityPeriods = visibilityPeriods;
     newDetails->spectralType = spectralType;
     newDetails->texture = texture;
     newDetails->geometry = geometry;
@@ -1026,28 +1026,24 @@ StarDetails::setVisibility(boost::intrusive_ptr<StarDetails>& details, bool b)
 }
 
 void
-StarDetails::setDisappearingJD(boost::intrusive_ptr<StarDetails>& details, double jd)
+StarDetails::setVisibilityPeriods(boost::intrusive_ptr<StarDetails>& details, std::vector<std::pair<double, double>>&& periods)
 {
     unshare(details);
-    details->disappearingJD = jd;
-}
-
-void
-StarDetails::setReappearingJD(boost::intrusive_ptr<StarDetails>& details, double jd)
-{
-    unshare(details);
-    details->reappearingJD = jd;
+    details->visibilityPeriods = std::move(periods);
+    std::sort(details->visibilityPeriods.begin(), details->visibilityPeriods.end());
 }
 
 bool
 StarDetails::isVisibleAt(double jd) const
 {
     if (!visible) return false;
-    const bool hasDis = disappearingJD >= 0.0;
-    const bool hasRe  = reappearingJD  >= 0.0;
-    if (hasDis && hasRe) return !(jd >= disappearingJD && jd < reappearingJD);
-    if (hasDis) return jd < disappearingJD;
-    if (hasRe) return jd >= reappearingJD;
+    if (visibilityPeriods.empty()) return true;
+
+    for (const auto& [dis, re] : visibilityPeriods) {
+        if (jd >= dis && jd < re) {
+            return false;
+        }
+    }
     return true;
 }
 

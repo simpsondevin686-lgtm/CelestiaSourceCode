@@ -75,8 +75,7 @@ public:
     Star* getOrbitBarycenter() const;
     bool getVisibility() const;
     bool isVisibleAt(double jd) const;
-    double getDisappearingJD() const { return disappearingJD; }
-    double getReappearingJD() const { return reappearingJD; }
+    const std::vector<std::pair<double, double>>& getVisibilityPeriods() const { return visibilityPeriods; }
     const std::shared_ptr<const celestia::ephem::RotationModel>& getRotationModel() const;
     Eigen::Vector3f getEllipsoidSemiAxes() const;
     bool isBarycenter() const;
@@ -89,8 +88,7 @@ public:
     static void setOrbit(boost::intrusive_ptr<StarDetails>&, const std::shared_ptr<const celestia::ephem::Orbit>&);
     static void setOrbitBarycenter(boost::intrusive_ptr<StarDetails>&, Star*);
     static void setVisibility(boost::intrusive_ptr<StarDetails>&, bool);
-    static void setDisappearingJD(boost::intrusive_ptr<StarDetails>&, double);
-    static void setReappearingJD(boost::intrusive_ptr<StarDetails>&, double);
+    static void setVisibilityPeriods(boost::intrusive_ptr<StarDetails>&, std::vector<std::pair<double, double>>&&);
     static void setRotationModel(boost::intrusive_ptr<StarDetails>&, const std::shared_ptr<const celestia::ephem::RotationModel>&);
     static void setEllipsoidSemiAxes(boost::intrusive_ptr<StarDetails>&, const Eigen::Vector3f&);
     static void addOrbitingStar(boost::intrusive_ptr<StarDetails>&, Star*);
@@ -139,8 +137,7 @@ private:
 
     Knowledge knowledge{ Knowledge::None };
     bool visible{ true };
-    double disappearingJD{ -1.0 };
-    double reappearingJD{ -1.0 };
+    std::vector<std::pair<double, double>> visibilityPeriods;
     std::array<char, 8> spectralType{ };
 
     celestia::util::TextureHandle texture{ celestia::util::TextureHandle::Invalid };

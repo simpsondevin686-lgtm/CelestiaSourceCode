@@ -9,6 +9,8 @@
 // of the License, or (at your option) any later version.
 
 #include "stardbbuilder.h"
+#include <vector>
+#include <algorithm>
 
 #include <algorithm>
 #include <array>
@@ -333,14 +335,47 @@ checkVisibilityDates(const StarDatabaseBuilder::StcHeader& header,
         return std::nullopt;
     };
 
-    const std::string* disStr = starData.getString("DisappearingDate");
-    if (disStr == nullptr) disStr = starData.getString("DissapearingDate");
-    const std::string* reStr = starData.getString("ReappearingDate");
-    if (disStr == nullptr && reStr == nullptr) return true;
+    auto getDateList = [&](std::string_view key) -> std::vector<double> {
+        std::vector<double> result;
+        const Value* v = starData.getValue(key);
+        if (v == nullptr) return result;
+
+        if (const ValueArray* arr = v->getArray(); arr != nullptr) {
+            for (size_t i = 0; i < arr->size(); ++i) {
+                if (const std::string* s = (*arr)[i].getString(); s != nullptr) {
+                    if (auto jd = parseDate(*s); jd.has_value()) result.push_back(*jd);
+                }
+            }
+        } else if (const std::string* s = v->getString(); s != nullptr) {
+            if (auto jd = parseDate(*s); jd.has_value()) result.push_back(*jd);
+        }
+        return result;
+    };
+
+    auto disJDs = getDateList("DisappearingDates");
+    auto reJDs = getDateList("ReappearingDates");
+
+    if (auto d = getDateList("DisappearingDate"); !d.empty()) disJDs.insert(disJDs.end(), d.begin(), d.end());
+    if (auto d = getDateList("DissapearingDate"); !d.empty()) disJDs.insert(disJDs.end(), d.begin(), d.end());
+    if (auto r = getDateList("ReappearingDate"); !r.empty()) reJDs.insert(reJDs.end(), r.begin(), r.end());
+
+    if (disJDs.empty() && reJDs.empty()) return true;
 
     if (newDetails == nullptr) {
-        stcWarn(header, _("DisappearingDate requires StarDetails (e.g., SpectralType); ignored"));
+        stcWarn(header, _("Visibility dates require StarDetails (e.g., SpectralType); ignored"));
         return true;
+    }
+
+    std::vector<std::pair<double, double>> periods;
+    size_t n = std::max(disJDs.size(), reJDs.size());
+    for (size_t i = 0; i < n; ++i) {
+        double dis = (i < disJDs.size()) ? disJDs[i] : 0.0;
+        double re = (i < reJDs.size()) ? reJDs[i] : 1e12;
+        periods.emplace_back(dis, re);
+    }
+
+    StarDetails::setVisibilityPeriods(newDetails, std::move(periods));
+    return true;
     }
 
     if (disStr != nullptr) {
