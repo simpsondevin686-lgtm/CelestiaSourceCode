@@ -378,17 +378,6 @@ checkVisibilityDates(const StarDatabaseBuilder::StcHeader& header,
     return true;
 }
 
-    if (disStr != nullptr) {
-        if (auto jd = parseDate(*disStr); jd.has_value()) StarDetails::setDisappearingJD(newDetails, *jd);
-        else stcWarn(header, _("invalid DisappearingDate (use ISO 8601 or MM/DD/YYTHH:MMAM)"));
-    }
-    if (reStr != nullptr) {
-        if (auto jd = parseDate(*reStr); jd.has_value()) StarDetails::setReappearingJD(newDetails, *jd);
-        else stcWarn(header, _("invalid ReappearingDate (use ISO 8601 or MM/DD/YYTHH:MMAM)"));
-    }
-    return true;
-}
-
 bool
 checkSpectralType(const StarDatabaseBuilder::StcHeader& header,
                   const AssociativeArray& starData,
