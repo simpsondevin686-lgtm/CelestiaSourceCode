@@ -376,7 +376,7 @@ checkVisibilityDates(const StarDatabaseBuilder::StcHeader& header,
 
     StarDetails::setVisibilityPeriods(newDetails, std::move(periods));
     return true;
-    }
+}
 
     if (disStr != nullptr) {
         if (auto jd = parseDate(*disStr); jd.has_value()) StarDetails::setDisappearingJD(newDetails, *jd);
