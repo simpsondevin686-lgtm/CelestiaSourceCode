@@ -196,7 +196,7 @@ RenderLabels Galaxy::getLabelMask() const
 
 void Galaxy::increaseLightGain()
 {
-    lightGain = std::min(1.0f, lightGain + 0.05f);
+    lightGain = std::min(100.0f, lightGain + 0.05f);
 }
 
 void Galaxy::decreaseLightGain()
@@ -211,7 +211,7 @@ float Galaxy::getLightGain()
 
 void Galaxy::setLightGain(float lg)
 {
-    lightGain = std::clamp(lg, 0.0f, 1.0f);
+    lightGain = std::clamp(lg, 0.0f, 100.0f);
 }
 
 std::ostream& operator<<(std::ostream& s, const GalaxyType& sc)
