@@ -2218,12 +2218,12 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
     GetLogger()->info("Simulating Optics: FOV: {:.3f}°, Limit Mag: {:.1f}, Resolution: {:.2f}\"", 
                       trueFOV_deg, limitingMag, resolution_arcsec);
 
-    config->renderDetails.autoMag = false;
     sim->setFaintestVisible(limitingMag);
 
     if (auto obs = sim->getActiveObserver(); obs != nullptr)
     {
-        if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+        auto projMode = renderer->getProjectionMode();
+        if (projMode != nullptr)
         {
             float zoom = projMode->getZoom(fov_rad);
             obs->setZoom(zoom);
@@ -2232,18 +2232,18 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
     }
     
     m_simulatingOptics = true;
-    notifyWatchers(Notification::FOVChanged);
+    notifyWatchers(CelestiaCore::Notification::FOVChanged);
 }
 
 
 void CelestiaCore::stopSimulatingOptics()
 {
-    config->renderDetails.autoMag = true;
     sim->setFaintestVisible(config->renderDetails.faintestVisible);
 
     if (auto obs = sim->getActiveObserver(); obs != nullptr)
     {
-        if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+        auto projMode = renderer->getProjectionMode();
+        if (projMode != nullptr)
         {
             float defaultFovRad = math::degToRad(45.0f);
             float zoom = projMode->getZoom(defaultFovRad);
@@ -2254,7 +2254,7 @@ void CelestiaCore::stopSimulatingOptics()
     
     GetLogger()->info("Optics simulation stopped. Restored default FOV and Zoom.");
     m_simulatingOptics = false;
-    notifyWatchers(Notification::FOVChanged);
+    notifyWatchers(CelestiaCore::Notification::FOVChanged);
 }
 
 void CelestiaCore::setFOVFromZoom()
