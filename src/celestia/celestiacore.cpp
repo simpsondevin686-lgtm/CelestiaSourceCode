@@ -2208,29 +2208,19 @@ void CelestiaCore::splitView(View::Type type, View* av, float splitPos)
 void CelestiaCore::simulateOptics(float magnification, float diameter)
 {
     if (magnification <= 0.0f) magnification = 1.0f;
-    if (diameter <= 0.0f) diameter = 7.0f; // Default to human eye
+    if (diameter <= 0.0f) diameter = 7.0f; 
 
-    // 1. Calculate the FOV (Assuming a standard 50-degree apparent FOV eyepiece)
     float trueFOV_deg = 50.0f / magnification;
     float fov_rad = math::degToRad(trueFOV_deg);
-
-    // 2. Calculate the Limiting Magnitude based on light-gathering area vs a 7mm human pupil
     float limitingMag = 6.0f + 5.0f * std::log10(diameter / 7.0f);
-
-    // 3. Calculate Angular Resolution (Dawes' Limit: 116 / Diameter in mm)
     float resolution_arcsec = 116.0f / diameter;
 
-    // Log the simulated optics stats for debugging
     GetLogger()->info("Simulating Optics: FOV: {:.3f}°, Limit Mag: {:.1f}, Resolution: {:.2f}\"", 
                       trueFOV_deg, limitingMag, resolution_arcsec);
 
-    // 4. Disable AutoMag so it doesn't override our custom magnitude
     config->renderDetails.autoMag = false;
-
-    // 5. Apply the settings directly to the simulation
     sim->setFaintestVisible(limitingMag);
 
-    // 6. Force the FOV and Zoom (bypassing the normal UI limits)
     if (auto obs = sim->getActiveObserver(); obs != nullptr)
     {
         if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
@@ -2241,9 +2231,6 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
         }
     }
     
-    // Notify the UI
-    m_simulatingOptics = true;
-    m_simulatingOptics = false;
     m_simulatingOptics = true;
     notifyWatchers(Notification::FOVChanged);
 }
@@ -2251,13 +2238,9 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
 
 void CelestiaCore::stopSimulatingOptics()
 {
-    // 1. Restore AutoMag
     config->renderDetails.autoMag = true;
-    
-    // 2. Restore the default faintest visible magnitude
     sim->setFaintestVisible(config->renderDetails.faintestVisible);
 
-    // 3. Reset FOV and Zoom to standard 45 degrees
     if (auto obs = sim->getActiveObserver(); obs != nullptr)
     {
         if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
@@ -2270,8 +2253,6 @@ void CelestiaCore::stopSimulatingOptics()
     }
     
     GetLogger()->info("Optics simulation stopped. Restored default FOV and Zoom.");
-    m_simulatingOptics = true;
-    m_simulatingOptics = false;
     m_simulatingOptics = false;
     notifyWatchers(Notification::FOVChanged);
 }
