@@ -2232,7 +2232,7 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
     }
     
     m_simulatingOptics = true;
-    notifyWatchers(CelestiaCore::Notification::FOVChanged);
+    
 }
 
 
@@ -2254,7 +2254,7 @@ void CelestiaCore::stopSimulatingOptics()
     
     GetLogger()->info("Optics simulation stopped. Restored default FOV and Zoom.");
     m_simulatingOptics = false;
-    notifyWatchers(CelestiaCore::Notification::FOVChanged);
+    
 }
 
 void CelestiaCore::setFOVFromZoom()
