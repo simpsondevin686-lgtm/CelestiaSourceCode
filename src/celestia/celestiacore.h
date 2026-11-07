@@ -312,6 +312,7 @@ public:
 
     void setFOVFromZoom();
     void simulateOptics(float magnification, float diameter);
+    void stopSimulatingOptics();
     void setZoomFromFOV();
 
     void flash(const std::string&, double duration = 1.0);

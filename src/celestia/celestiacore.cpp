@@ -2245,6 +2245,31 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
     notifyWatchers(Notification::FOVChanged);
 }
 
+
+void CelestiaCore::stopSimulatingOptics()
+{
+    // 1. Restore AutoMag
+    config->renderDetails.autoMag = true;
+    
+    // 2. Restore the default faintest visible magnitude
+    sim->setFaintestVisible(config->renderDetails.faintestVisible);
+
+    // 3. Reset FOV and Zoom to standard 45 degrees
+    if (auto obs = sim->getActiveObserver(); obs != nullptr)
+    {
+        if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+        {
+            float defaultFovRad = math::degToRad(45.0f);
+            float zoom = projMode->getZoom(defaultFovRad);
+            obs->setZoom(zoom);
+            obs->setFOV(defaultFovRad);
+        }
+    }
+    
+    GetLogger()->info("Optics simulation stopped. Restored default FOV and Zoom.");
+    notifyWatchers(Notification::FOVChanged);
+}
+
 void CelestiaCore::setFOVFromZoom()
 {
     auto projectionMode = renderer->getProjectionMode();
