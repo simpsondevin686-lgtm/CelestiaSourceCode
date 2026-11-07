@@ -311,6 +311,7 @@ public:
     void setObserverFlags(celestia::engine::ObserverFlags);
 
     void setFOVFromZoom();
+    void simulateOptics(float magnification, float diameter);
     void setZoomFromFOV();
 
     void flash(const std::string&, double duration = 1.0);

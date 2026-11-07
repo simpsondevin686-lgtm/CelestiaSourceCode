@@ -14,6 +14,7 @@
 // of the License, or (at your option) any later version.
 
 #include "celestiacore.h"
+#include <cmath>
 
 #include <algorithm>
 #include <cstddef>
@@ -2202,6 +2203,40 @@ void CelestiaCore::splitView(View::Type type, View* av, float splitPos)
     }
 }
 
+
+
+void CelestiaCore::simulateOptics(float magnification, float diameter)
+{
+    if (magnification <= 0.0f) magnification = 1.0f;
+    if (diameter <= 0.0f) diameter = 7.0f; // Default to human eye
+
+    // 1. Calculate the FOV (Assuming a standard 50-degree apparent FOV eyepiece)
+    float trueFOV_deg = 50.0f / magnification;
+    float fov_rad = math::degToRad(trueFOV_deg);
+
+    // 2. Calculate the Limiting Magnitude based on light-gathering area vs a 7mm human pupil
+    float limitingMag = 6.0f + 5.0f * std::log10(diameter / 7.0f);
+
+    // 3. Disable AutoMag so it doesn't override our custom magnitude
+    config->renderDetails.autoMag = false;
+
+    // 4. Apply the settings directly to the simulation
+    sim->setFaintestVisible(limitingMag);
+
+    // 5. Force the FOV and Zoom (bypassing the normal UI limits)
+    if (auto obs = sim->getActiveObserver(); obs != nullptr)
+    {
+        if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+        {
+            float zoom = projMode->getZoom(fov_rad);
+            obs->setZoom(zoom);
+            obs->setFOV(fov_rad);
+        }
+    }
+    
+    // Notify the UI
+    notifyWatchers(Notification::FOVChanged);
+}
 
 void CelestiaCore::setFOVFromZoom()
 {
