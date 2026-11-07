@@ -2205,7 +2205,7 @@ void CelestiaCore::splitView(View::Type type, View* av, float splitPos)
 
 
 
-std::string CelestiaCore::simulateOptics(float magnification, float diameter)
+void CelestiaCore::simulateOptics(float magnification, float diameter)
 {
     if (magnification <= 0.0f) magnification = 1.0f;
     if (diameter <= 0.0f) diameter = 7.0f; // Default to human eye
@@ -2219,6 +2219,10 @@ std::string CelestiaCore::simulateOptics(float magnification, float diameter)
 
     // 3. Calculate Angular Resolution (Dawes' Limit: 116 / Diameter in mm)
     float resolution_arcsec = 116.0f / diameter;
+
+    // Log the simulated optics stats for debugging
+    GetLogger()->info("Simulating Optics: FOV: {:.3f}°, Limit Mag: {:.1f}, Resolution: {:.2f}\"", 
+                      trueFOV_deg, limitingMag, resolution_arcsec);
 
     // 4. Disable AutoMag so it doesn't override our custom magnitude
     config->renderDetails.autoMag = false;
@@ -2239,10 +2243,6 @@ std::string CelestiaCore::simulateOptics(float magnification, float diameter)
     
     // Notify the UI
     notifyWatchers(Notification::FOVChanged);
-
-    // 7. Return a summary string for the Android UI to display
-    return fmt::format("FOV: {:.3f}° | Limit Mag: {:.1f} | Resolution: {:.2f}\"", 
-                       trueFOV_deg, limitingMag, resolution_arcsec);
 }
 
 void CelestiaCore::setFOVFromZoom()
