@@ -314,7 +314,6 @@ public:
     void simulateOptics(float magnification, float diameter);
     void stopSimulatingOptics();
     bool isSimulatingOptics() const { return m_simulatingOptics; }
-private:
     bool m_simulatingOptics{ false };
     void setZoomFromFOV();
 
