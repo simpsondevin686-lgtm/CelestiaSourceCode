@@ -2215,7 +2215,7 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
     
     // 2. Calculate the exact FOV based on the engine's base FOV divided by magnification.
     float fov_rad = 0.0f;
-    if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+    if (auto projMode = renderer->getProjectionMode(); projMode != nullptr)
     {
         fov_rad = projMode->getFOV(zoom);
     }
@@ -2231,7 +2231,6 @@ void CelestiaCore::simulateOptics(float magnification, float diameter)
                       math::radToDeg(fov_rad), limitingMag, resolution_arcsec);
 
     // 6. Disable AutoMag so it doesn't override our custom magnitude
-    config->renderDetails.autoMag = false;
 
     // 7. Apply the settings directly to the simulation
     sim->setFaintestVisible(limitingMag);
