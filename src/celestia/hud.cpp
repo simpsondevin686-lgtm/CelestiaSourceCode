@@ -279,7 +279,7 @@ angleToStr(double angle, const std::locale& loc)
 }
 
 void
-displayApparentDiameter(Overlay& overlay, double radius, double distance, const std::locale& loc)
+displayApparentDiameter(Overlay& overlay, double radius, double distance, double zoom, const std::locale& loc)
 {
     if (distance < radius)
         return;
@@ -289,7 +289,15 @@ displayApparentDiameter(Overlay& overlay, double radius, double distance, const 
     // Only display the arc size if it's less than 160 degrees and greater
     // than one second--otherwise, it's probably not interesting data.
     if (arcSize < 160.0 && arcSize > 1.0 / 3600.0)
+    {
         overlay.printf(_("Apparent diameter: %s\n"), angleToStr(arcSize, loc));
+        
+        double camArcSize = arcSize * zoom;
+        if (camArcSize < 160.0 && camArcSize > 1.0 / 3600.0)
+        {
+            overlay.printf(_("AppCamDiam: %s\n"), angleToStr(camArcSize, loc));
+        }
+    }
 }
 
 void
@@ -421,7 +429,8 @@ displayStarInfo(const util::NumberFormatter& formatter,
                 const Universe& universe,
                 double distance,
                 const HudSettings& hudSettings,
-                const std::locale& loc)
+                const std::locale& loc,
+                double zoom)
 {
     overlay.printf(_("Distance: %s\n"),
                    DistanceLyToStr(formatter, distance, 5, hudSettings.measurementSystem));
@@ -495,7 +504,8 @@ void displayDSOinfo(const util::NumberFormatter& formatter,
                     const DeepSkyObject& dso,
                     double distance,
                     MeasurementSystem measurement,
-                    const std::locale& loc)
+                    const std::locale& loc,
+                    double zoom)
 {
     overlay.print(dso.getDescription());
     overlay.print("\n");
@@ -511,7 +521,7 @@ void displayDSOinfo(const util::NumberFormatter& formatter,
                      DistanceLyToStr(formatter, distance + dso.getRadius(), 5, measurement));
     }
 
-    displayApparentDiameter(overlay, dso.getRadius(), distance, loc);
+    displayApparentDiameter(overlay, dso.getRadius(), distance, zoom, loc);
 
     if (dso.getAbsoluteMagnitude() > DSO_DEFAULT_ABS_MAGNITUDE)
     {
@@ -533,14 +543,15 @@ displayPlanetInfo(const util::NumberFormatter& formatter,
                   double t,
                   const Eigen::Vector3d& viewVec,
                   const HudSettings& hudSettings,
-                  const std::locale& loc)
+                  const std::locale& loc,
+                  double zoom)
 {
     double distanceKm = viewVec.norm();
     double distance = distanceKm - body.getRadius();
     overlay.printf(_("Distance: %s\n"),
                    DistanceKmToStr(formatter, distance, 5, hudSettings.measurementSystem));
 
-    displayApparentDiameter(overlay, body.getRadius(), distanceKm, loc);
+    displayApparentDiameter(overlay, body.getRadius(), distanceKm, zoom, loc);
 
     // Display the phase angle
 
@@ -1129,6 +1140,7 @@ Hud::renderSelectionInfo(const WindowMetrics& metrics,
                          Selection sel,
                          const Eigen::Vector3d& v)
 {
+    double zoom = sim->getActiveObserver()->getZoom();
     m_overlay->savePos();
     m_overlay->setColor(InfoColor);
     m_overlay->moveBy(metrics.getSafeAreaStart(), metrics.getSafeAreaTop(m_hudFonts.titleFontHeight()));
@@ -1156,7 +1168,8 @@ Hud::renderSelectionInfo(const WindowMetrics& metrics,
                             *(sim->getUniverse()),
                              astro::kilometersToLightYears(v.norm()),
                              m_hudSettings,
-                             loc);
+                             loc,
+                             zoom);
         }
         break;
 
@@ -1177,7 +1190,8 @@ Hud::renderSelectionInfo(const WindowMetrics& metrics,
                            *sel.deepsky(),
                             astro::kilometersToLightYears(v.norm()) - sel.deepsky()->getRadius(),
                             m_hudSettings.measurementSystem,
-                            loc);
+                            loc,
+                            zoom);
         }
         break;
 
@@ -1201,7 +1215,8 @@ Hud::renderSelectionInfo(const WindowMetrics& metrics,
                                sim->getTime(),
                                v,
                                m_hudSettings,
-                               loc);
+                               loc,
+                               zoom);
         }
         break;
 
