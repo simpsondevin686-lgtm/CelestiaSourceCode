@@ -441,8 +441,7 @@ displayStarInfo(const util::NumberFormatter& formatter,
     }
     else
     {
-        displayApparentDiameter(overlay, star.getRadius(),
-                                astro::lightYearsToKilometers(distance), loc);
+        displayApparentDiameter(overlay, star.getRadius(), astro::lightYearsToKilometers(distance), zoom, loc);
 
         overlay.print(loc, fmt::runtime(_("Abs (app) mag: {:.2f} ({:.2f})\n")),
                       star.getAbsoluteMagnitude(),
