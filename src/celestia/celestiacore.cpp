@@ -2208,31 +2208,40 @@ void CelestiaCore::splitView(View::Type type, View* av, float splitPos)
 void CelestiaCore::simulateOptics(float magnification, float diameter)
 {
     if (magnification <= 0.0f) magnification = 1.0f;
-    if (diameter <= 0.0f) diameter = 7.0f; 
+    if (diameter <= 0.0f) diameter = 7.0f;
 
-    float trueFOV_deg = 50.0f / magnification;
-    float fov_rad = math::degToRad(trueFOV_deg);
+    // 1. The true magnification IS the zoom factor.
+    float zoom = magnification;
+    
+    // 2. Calculate the exact FOV based on the engine's base FOV divided by magnification.
+    float fov_rad = 0.0f;
+    if (auto* projMode = renderer->getProjectionMode(); projMode != nullptr)
+    {
+        fov_rad = projMode->getFOV(zoom);
+    }
+
+    // 3. Calculate the Limiting Magnitude based on light-gathering area vs a 7mm human pupil
     float limitingMag = 6.0f + 5.0f * std::log10(diameter / 7.0f);
+
+    // 4. Calculate Angular Resolution (Dawes' Limit: 116 / Diameter in mm)
     float resolution_arcsec = 116.0f / diameter;
 
+    // 5. Log the stats
     GetLogger()->info("Simulating Optics: FOV: {:.3f}°, Limit Mag: {:.1f}, Resolution: {:.2f}\"", 
-                      trueFOV_deg, limitingMag, resolution_arcsec);
+                      math::radToDeg(fov_rad), limitingMag, resolution_arcsec);
 
+    // 6. Disable AutoMag so it doesn't override our custom magnitude
+    config->renderDetails.autoMag = false;
+
+    // 7. Apply the settings directly to the simulation
     sim->setFaintestVisible(limitingMag);
 
+    // 8. Force the FOV and Zoom
     if (auto obs = sim->getActiveObserver(); obs != nullptr)
     {
-        auto projMode = renderer->getProjectionMode();
-        if (projMode != nullptr)
-        {
-            float zoom = projMode->getZoom(fov_rad);
-            obs->setZoom(zoom);
-            obs->setFOV(fov_rad);
-        }
+        obs->setZoom(zoom);
+        obs->setFOV(fov_rad);
     }
-    
-    m_simulatingOptics = true;
-    
 }
 
 
