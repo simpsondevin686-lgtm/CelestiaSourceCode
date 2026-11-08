@@ -589,6 +589,7 @@ public:
                                                                   unsigned int);
     const boost::intrusive_ptr<StarDetails>& getNeutronStarDetails();
     const boost::intrusive_ptr<StarDetails>& getBlackHoleDetails();
+    const boost::intrusive_ptr<StarDetails>& getWhiteHoleDetails();
     const boost::intrusive_ptr<StarDetails>& getBarycenterDetails();
 
     static StarDetailsManager& getManager();
@@ -625,6 +626,7 @@ private:
                                                               unsigned int);
     boost::intrusive_ptr<StarDetails> createNeutronStarDetails();
     static boost::intrusive_ptr<StarDetails> createBlackHoleDetails();
+    static boost::intrusive_ptr<StarDetails> createWhiteHoleDetails();
     static boost::intrusive_ptr<StarDetails> createBarycenterDetails();
 
     static constexpr auto nNormal = static_cast<std::size_t>(StellarClass::Spectral_Count) *
@@ -639,6 +641,7 @@ private:
     std::array<boost::intrusive_ptr<StarDetails>, nWhiteDwarf> whiteDwarfDetails{ };
     boost::intrusive_ptr<StarDetails> neutronStarDetails{ };
     boost::intrusive_ptr<StarDetails> blackHoleDetails{ };
+    boost::intrusive_ptr<StarDetails> whiteHoleDetails{ };
     boost::intrusive_ptr<StarDetails> barycenterDetails{ };
 };
 
@@ -709,6 +712,16 @@ StarDetailsManager::getBlackHoleDetails()
         blackHoleDetails = createBlackHoleDetails();
 
     return blackHoleDetails;
+}
+
+
+const boost::intrusive_ptr<StarDetails>&
+StarDetailsManager::getWhiteHoleDetails()
+{
+    if (whiteHoleDetails == nullptr)
+        whiteHoleDetails = createWhiteHoleDetails();
+
+    return whiteHoleDetails;
 }
 
 const boost::intrusive_ptr<StarDetails>&
@@ -848,6 +861,18 @@ StarDetailsManager::createBlackHoleDetails()
     return details;
 }
 
+
+inline boost::intrusive_ptr<StarDetails>
+StarDetailsManager::createWhiteHoleDetails()
+{
+    // A white hole is the exact opposite of a black hole: it emits pure white light.
+    // 8000K is the exact temperature mapped to Color(1.0, 1.0, 1.0) in the blackbody table.
+    auto details = createStandardStarType("H"sv, 8000.0f, 1.0f / 86400.0f);
+    details->radius = 2.9f;
+    details->knowledge = StarDetails::Knowledge::KnowRadius;
+    return details;
+}
+
 inline boost::intrusive_ptr<StarDetails>
 StarDetailsManager::createBarycenterDetails()
 {
@@ -876,6 +901,8 @@ StarDetails::GetStarDetails(const StellarClass& sc)
         return manager.getNeutronStarDetails();
     case StellarClass::BlackHole:
         return manager.getBlackHoleDetails();
+    case StellarClass::WhiteHole:
+        return manager.getWhiteHoleDetails();
     default:
         return nullptr;
     }

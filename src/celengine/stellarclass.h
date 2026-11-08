@@ -21,6 +21,7 @@ public:
         WhiteDwarf     = 1,
         NeutronStar    = 2,
         BlackHole      = 3,
+        WhiteHole      = 4,
     };
 
     enum SpectralClass
